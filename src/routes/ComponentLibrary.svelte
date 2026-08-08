@@ -113,7 +113,7 @@
     <section class="swatch chamfer-bordered">
       <h2>MultiSelectCombobox</h2>
       <p class="note">
-        Generic over <code>&#123; id, label &#125;</code> options. Trigger matches the height of a normal <code>.field</code> input. The popover is portaled to <code>&lt;body&gt;</code> — chamfered panels clip-path their whole subtree, which would otherwise clip the popover (position:absolute/fixed can't escape clip-path the way it can escape <code>overflow: hidden</code>).
+        Generic over <code>&#123; id, label &#125;</code> options. Trigger matches the height of a normal <code>.field</code> input. Uses the native <code>popover</code> attribute + CSS anchor positioning, not a hand-rolled portal/dismiss — it renders in the browser's top layer (escaping <code>clip-path</code> on the chamfered panels for free) and gets outside-click/tap light-dismiss and Escape-to-close from the browser, correctly telling a tap apart from a drag/scroll on both mouse and touch. Above/below flip is a TODO — it always opens below the trigger for now.
       </p>
       <MultiSelectCombobox options={comboboxOptions} bind:selected={comboboxSelected} placeholder="Select events…" />
       <p class="note">
