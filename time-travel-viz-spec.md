@@ -338,6 +338,20 @@ server is required even though there's no real backend.
   the full `d3` bundle — Svelte owns the DOM and animation, so `d3-selection`
   / `d3-transition` aren't needed.
 
+**Routing**: the app is a single-page app with client-side routing via
+**`svelte-spa-router`**, using its default **hash-based** URLs (`#/...`).
+Chosen over SvelteKit specifically to avoid SvelteKit's file-based routing
+conventions (folder-per-route, `+page.svelte`/`+layout.svelte` naming),
+which felt too rigid for this app's size. Hash-based URLs mean deeplinks
+and refresh/new-tab state-recreation work on *any* static host with zero
+server-side fallback/rewrite configuration — the `#...` fragment never
+reaches the server, so there's nothing to configure. It's still a real SPA:
+navigation is client-side only (no full page reload), so in-memory state —
+the loaded `Story` and any derived indices built from it (`participants()`,
+fork/merge points, and later the satisfiability/layout computations) —
+persists across navigation between the editor and the future graph view,
+which was the motivating requirement (§9, §11).
+
 **Persistence & data portability**: the `Story` document (§3) is
 autosaved to `localStorage` as it's edited, plus explicit **JSON
 export/import** for backup and sharing between people. This is the reason
