@@ -1,8 +1,8 @@
 <script lang="ts">
   import { generateId } from '../id';
   import IconButton from '../IconButton.svelte';
-  import UndoToast from '../UndoToast.svelte';
-  import UuidTag from '../UuidTag.svelte';
+  import UniverseRow from './UniverseRow.svelte';
+  import { pushUndo } from '../toastQueue.svelte';
   import type { StoryUniverse, StoryEvent } from '../types';
 
   let { universes = $bindable(), events }: { universes: StoryUniverse[]; events: StoryEvent[] } = $props();
@@ -13,38 +13,28 @@
 
   let newLabel = $state('');
   function add() {
-    if (!newLabel.trim()) return;
-    universes = [...universes, { id: generateId(), label: newLabel.trim() }];
+    // The very first universe can be added with a blank label — there's
+    // nothing yet to disambiguate it from. Every universe after that
+    // needs one, so multiple universes stay tellable apart.
+    if (universes.length > 0 && !newLabel.trim()) return;
+    universes = [...universes, { id: generateId(), label: newLabel.trim() || undefined }];
     newLabel = '';
   }
 
-  let editingId = $state<string | null>(null);
-  let editLabel = $state('');
-  function startEdit(u: StoryUniverse) {
-    editingId = u.id;
-    editLabel = u.label ?? '';
-  }
-  function saveEdit() {
-    universes = universes.map((u) => (u.id === editingId ? { ...u, label: editLabel.trim() || u.label } : u));
-    editingId = null;
-  }
-  function cancelEdit() {
-    editingId = null;
+  function saveUniverse(id: string, label: string | undefined) {
+    universes = universes.map((u) => (u.id === id ? { ...u, label } : u));
   }
 
-  let lastDeleted = $state<{ item: StoryUniverse; index: number } | null>(null);
-  function remove(id: string) {
+  function removeUniverse(id: string) {
     const index = universes.findIndex((u) => u.id === id);
     if (index === -1) return;
-    lastDeleted = { item: universes[index], index };
+    const item = universes[index];
     universes = universes.filter((u) => u.id !== id);
-  }
-  function undoDelete() {
-    if (!lastDeleted) return;
-    const restored = [...universes];
-    restored.splice(lastDeleted.index, 0, lastDeleted.item);
-    universes = restored;
-    lastDeleted = null;
+    pushUndo(`Deleted "${item.label ?? 'universe'}"`, () => {
+      const restored = [...universes];
+      restored.splice(index, 0, item);
+      universes = restored;
+    });
   }
 </script>
 
@@ -58,30 +48,12 @@
   </thead>
   <tbody>
     {#each universes as u (u.id)}
-      <tr>
-        {#if editingId === u.id}
-          <td>
-            <input
-              type="text"
-              class="field"
-              bind:value={editLabel}
-              onkeydown={(e) => e.key === 'Enter' && saveEdit()}
-            />
-          </td>
-          <td class="mono">{eventsInUniverse(u.id)}</td>
-          <td class="actions">
-            <IconButton icon="save" label="Save universe" onclick={saveEdit} />
-            <IconButton icon="x" label="Cancel edit" onclick={cancelEdit} />
-          </td>
-        {:else}
-          <td>{u.label} <UuidTag id={u.id} /></td>
-          <td class="mono">{eventsInUniverse(u.id)}</td>
-          <td class="actions">
-            <IconButton icon="edit" label="Edit universe" onclick={() => startEdit(u)} />
-            <IconButton icon="x" label="Delete universe" onclick={() => remove(u.id)} />
-          </td>
-        {/if}
-      </tr>
+      <UniverseRow
+        universe={u}
+        eventCount={eventsInUniverse(u.id)}
+        onSave={(label) => saveUniverse(u.id, label)}
+        onDelete={() => removeUniverse(u.id)}
+      />
     {/each}
     <tr class="add-row">
       <td>
@@ -95,19 +67,17 @@
       </td>
       <td></td>
       <td class="actions">
-        <IconButton icon="plus" label="Add universe" variant="accent" onclick={add} disabled={!newLabel.trim()} />
+        <IconButton
+          icon="plus"
+          label="Add universe"
+          variant="accent"
+          onclick={add}
+          disabled={universes.length > 0 && !newLabel.trim()}
+        />
       </td>
     </tr>
   </tbody>
 </table>
-
-{#if lastDeleted}
-  <UndoToast
-    message={`Deleted "${lastDeleted.item.label ?? 'universe'}"`}
-    onUndo={undoDelete}
-    onDismiss={() => (lastDeleted = null)}
-  />
-{/if}
 
 <style>
   .actions {
