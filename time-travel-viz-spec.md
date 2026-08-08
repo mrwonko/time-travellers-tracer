@@ -346,3 +346,19 @@ mandatory rather than an implicit default (§3) — it keeps two independently
 authored `Story` documents safely combinable later (a real merge
 feature/UI is *not* being built now — see §9 — but the identifiers won't
 need to change when it is).
+
+## 11. MVP phasing
+
+**Phase 1 (current target): the story editor, no chart.** Author and edit a
+full `Story` (events with predecessors/universe, observers, moments
+including `direction`) through a UI, with persistence (§10). The subway-map
+visualization (§7) and everything downstream of it (lane layout, connector
+rendering, universe-rendering open question §8 item 8) is explicitly **not**
+part of this phase — it's the next one, once the editor exists.
+
+**Visual design language** for the editor (and, later, the graph) is
+decided separately in `design-language.md` — geometric/high-contrast/
+retro-futuristic direction (Marathon, Andor's HOX/POX and Narkina 5 as
+references), near-zero motion in the editor vs. a real animation budget in
+the future graph view. Treat it as a confirmed direction, not yet tuned
+against real screens — revisit once Phase 1 has actual pages to look at.

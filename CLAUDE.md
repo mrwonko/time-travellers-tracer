@@ -4,16 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Pre-implementation. The repository currently contains only a design spec
-(`time-travel-viz-spec.md`) — no application code, package manifest, or build
-tooling exists yet. There are no build/lint/test commands to run until that
-scaffolding is created.
+Pre-implementation. The repository currently contains design docs only —
+`time-travel-viz-spec.md` (data model, visualization approach, resolved
+decisions) and `design-language.md` (visual/UI design direction) — no
+application code, package manifest, or build tooling exists yet. There are
+no build/lint/test commands to run until that scaffolding is created.
+
+**MVP scope (spec §11): the story editor only, no chart.** Build authoring
+UI for the full `Story` data model (events, observers, universes, moments)
+with persistence — not the subway-map visualization (spec §7), which is a
+later phase. Don't build graph-rendering code as part of this phase.
 
 Tech stack **is decided** (spec §10): Svelte + TypeScript, built with Vite;
-SVG for the chart (not Canvas); small D3 submodules (`d3-scale`, `d3-shape`,
-`d3-array`) for layout math only, not full D3 or `d3-selection`. Frontend
-only, no backend — static deliverable, but must be served over `http://`
-(not opened via `file://`) since the app relies on `localStorage`.
+SVG for the chart (not Canvas, for the later graph phase); small D3
+submodules (`d3-scale`, `d3-shape`, `d3-array`) for layout math only, not
+full D3 or `d3-selection`. Frontend only, no backend — static deliverable,
+but must be served over `http://` (not opened via `file://`) since the app
+relies on `localStorage`.
+
+**Visual design** (`design-language.md`, full detail there): geometric,
+high-contrast, retro-futuristic (references: Marathon (2025), *Andor*'s
+HOX/POX displays and Narkina 5 prison) — near-black ink on paper-white base
+tokens (light default, dark theme available), sharp corners with a
+chamfered-corner motif, amber primary / cyan secondary saturated accents,
+flat hairline-border layering (no shadows/gradients). Motion is split by
+surface: **near-zero motion in editor/data-entry UI** (snappy, keyboard-first,
+no animations blocking input) vs. a real animation budget reserved for the
+later graph view (position transitions, hover/click effects). This
+direction is confirmed but not yet tuned against real screens.
 
 ## What this project is
 
