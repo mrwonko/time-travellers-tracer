@@ -1,0 +1,79 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project status
+
+Pre-implementation. The repository currently contains only a design spec
+(`time-travel-viz-spec.md`) — no application code, package manifest, or build
+tooling exists yet. There are no build/lint/test commands to run until that
+scaffolding is created.
+
+Tech stack **is decided** (spec §10): Svelte + TypeScript, built with Vite;
+SVG for the chart (not Canvas); small D3 submodules (`d3-scale`, `d3-shape`,
+`d3-array`) for layout math only, not full D3 or `d3-selection`. Frontend
+only, no backend — static deliverable, but must be served over `http://`
+(not opened via `file://`) since the app relies on `localStorage`.
+
+## What this project is
+
+An interactive web visualization for time-travel stories with closed loops
+(and possibly branching/merging timelines). It renders, per character
+("observer"), their personal/subjective order of experienced events — even
+when that order jumps around non-monotonically — and shows visually when
+different observers share an event ("meet").
+
+`time-travel-viz-spec.md` is the authoritative design document — read it in
+full before implementing. The core model, summarized:
+
+- **Event**: atomic thing that happens; has `predecessors` (causal "caused
+  by" edges). The predecessor graph **may contain cycles** — a cycle alone
+  isn't a paradox (see satisfiability, spec §5.2).
+- **Observer**: a character with an ordered `sequence` of **Moments**. This
+  order is the observer's own subjective experienced order — there is
+  deliberately **no absolute/global timestamp** anywhere in the model.
+- **Moment**: a set of event IDs (usually 1) an observer experiences
+  together, plus a `direction` (`forward`/`inverted`) for Tenet-style
+  entropy-inverted traversal.
+- **`participants(event)`** is *derived*, not stored — computed by scanning
+  every observer's moments for a given event ID. Shared event ID across
+  observers is the *only* mechanism for representing co-presence/meetings.
+  Multiplicity matters: an observer can witness the same event twice and
+  should appear twice in participant lists, not be deduplicated.
+- A "background/world timeline" is **not a special concept** — if needed,
+  model it as an ordinary `Observer` (spec §6), not a field on `Event`.
+- Every **Event** carries a mandatory `universe: UniverseID` (UUID). Fork
+  and merge points are *derived* (spec §4), not stored: a fork is an event
+  whose successors span more than one universe, a merge is an event whose
+  predecessors span more than one universe. `universe` is mandatory (not
+  defaulted) specifically to keep independently-authored `Story` documents
+  safely mergeable later — see spec §3, §10.
+- `EventID`/`ObserverID`/`UniverseID`/`MomentID` are all UUIDs, for the same
+  reason: the `Story` document is expected to be forked and later
+  reconciled between independent edits, and positional array addressing
+  doesn't survive that. This "document fork/merge" concept is unrelated to
+  the in-narrative Universe fork/merge above — same word, different layer.
+  `participants()` returns `moment.id`, not positional index (spec §4).
+- The persisted/exported unit is a `Story { events, observers, universes }`
+  document (spec §3) — autosaved to `localStorage`, with explicit JSON
+  export/import for backup and sharing (spec §10).
+
+Two graphs must not be conflated (spec §5.1): the causal predecessor graph
+("what caused what," may be cyclic) stays independent of the derived
+branch/universe topology described above — the predecessor graph itself
+carries no branching-specific structure.
+
+The intended visualization (spec §7, decided direction) is a subway-map
+style chart: one lane per observer (X axis), Y position derived from a
+user-selectable reference observer's own monotonic sequence, shared events
+drawn as cross-lane connectors, and an observer's own next-step order shown
+via directed arrows within their lane (since a jump can move opposite to the
+reference observer's Y order). Alternatives considered but not chosen:
+circular/radial layout, presence matrix, dual synced scrubbers.
+
+Spec §8 lists remaining open questions (event content model for
+paradox-checking, lane ordering to minimize crossings, connector rendering
+style, default reference observer, inverted-segment visuals, and how the
+chart should visually render universe/fork/merge boundaries). Branching
+topology and tech stack are resolved (§10 above). Treat the rest as live
+design decisions, not gaps to silently fill in.

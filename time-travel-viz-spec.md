@@ -41,31 +41,84 @@ step order) matters for the chart.
 
 ## 3. Data model
 
-Illustrative schema (language/stack not prescribed — see Open Questions):
+Concrete schema (tech stack: see §10):
 
 ```
+Story {                         // the root document — what gets persisted
+                                 // and exported/imported (§10)
+  events: Event[]
+  observers: Observer[]
+  universes: Universe[]
+}
+
 Event {
-  id: EventID
+  id: EventID                   // UUID
   label?: string                // optional flavor text, not used by algorithms
   predecessors: EventID[]       // "caused by" edges; may form cycles
+  universe: UniverseID          // UUID; mandatory — see below and §10
 }
 
 Observer {
-  id: ObserverID
+  id: ObserverID                // UUID
   name?: string
   sequence: Moment[]            // ordered — this order IS the observer's
                                  // personal/subjective experienced order
 }
 
 Moment {
+  id: MomentID                  // UUID
   events: EventID[]             // usually length 1; >1 = experienced as
                                  // simultaneous by this observer
   direction: "forward" | "inverted"   // see §5.3
 }
+
+Universe {
+  id: UniverseID                 // UUID
+  label?: string
+}
 ```
+
+`EventID`, `ObserverID`, `UniverseID`, and `MomentID` are all UUIDs. The
+reason isn't (only) that they're referenced by ID from elsewhere — it's that
+the `Story` document itself (§10) is expected to be **forked and later
+reconciled**: two people (or one person on two branches) independently
+editing copies of the same `Story`, then merging their edits back together.
+Positional addressing (array index) doesn't survive that — if one fork
+inserts a moment mid-sequence and the other reorders the same sequence, indices
+no longer line up, and a merge tool can't tell "same moment, edited" from
+"unrelated new moment" without a stable ID. This applies just as much to
+`Moment` (an element of `Observer.sequence`) as to the top-level entities,
+which is why it gets an `id` too, not just positional `momentIndex`
+addressing.
+
+*Terminology note*: this "fork a `Story`, reconcile later" concept is
+**unrelated** to the in-narrative Universe fork/merge concept in §4 — same
+English word, two different layers (document edit-history vs. story
+content). A single-universe story can still be authored collaboratively and
+need document-level fork/merge; a single-author story can still have many
+in-narrative universes. Don't conflate them.
+
+**`universe` is mandatory, not optional/defaultable.** A single-timeline
+story just gives every event the same `UniverseID`. The reason it isn't an
+implicit/omittable default: the UUID + mandatory-universe combination is
+what keeps the door open to later importing and merging `Story` documents
+authored independently by different people (§10) — an *implicit* shared
+default universe would silently glue two separately-authored untagged
+event sets into one universe on merge, fabricating meetings/merge-points
+that were never intended. Requiring an explicit `UniverseID` (itself a UUID,
+so two authors' universes can never accidentally collide either) avoids that
+trap even though it's some upfront busywork for the common non-branching
+case.
 
 Important properties of this model:
 
+- `direction` is not an intrinsic property of a moment in isolation — it
+  describes the traversal *into* that moment from the previous one in the
+  observer's sequence (i.e. it's really a property of the step/edge between
+  consecutive moments, just encoded on the later endpoint for convenience).
+  A moment's `direction` is meaningless without the moment before it; the
+  first moment in a sequence has no incoming step, so its `direction` value
+  is unconstrained/ignored. See §5.3 for how this is used.
 - The **same EventID can appear more than once** across an observer's
   sequence (an observer can witness the same event twice — e.g. watching
   their own past/future self). This is just a repeat in the list; no special
@@ -80,20 +133,40 @@ computed by scanning all observers' moments for that event ID:
 
 ```
 participants(e) = [
-  (observer, momentIndex)
+  (observer, moment.id)
   for observer in allObservers
-  for momentIndex, moment in observer.sequence
+  for moment in observer.sequence
   if e in moment.events
 ]
 ```
 
+Returns `moment.id`, not positional index — the index is fragile under
+document forking/reconciliation (see §3), while the moment's own ID stays
+stable. Positional order within a sequence, when actually needed (e.g. for
+rendering), is always trivially derivable by locating that `moment.id`
+within its observer's `sequence` array.
+
 This must account for multiplicity: if one observer's sequence references
 the same event twice, that observer should appear twice in the result (as
-two separate `(observer, momentIndex)` entries), not be deduplicated.
+two separate `(observer, moment.id)` entries, one per distinct `Moment`),
+not be deduplicated.
 
 A "meeting" between observers is simply any event where `participants(e)`
 includes more than one distinct observer (or the same observer more than
 once, for a self-encounter).
+
+**Fork/merge points** — like `participants()`, derived by cross-referencing
+`predecessors` against `universe`, not stored as their own graph (§5.1,
+§10):
+
+- A **fork point** is an event `E` whose direct successors (events listing
+  `E` in their `predecessors`) span more than one distinct `universe`.
+- A **merge point** is an event `E` whose own `predecessors` span more than
+  one distinct `universe`.
+
+There's no structural distinction between a "full merge" and a partial
+causal bleed between timelines — both are just an edge crossing universes;
+it's a narrative reading of the same fact, not a data-level one.
 
 ## 5. Causality, cycles, and self-consistency
 
@@ -102,11 +175,12 @@ once, for a self-encounter).
 - **Predecessor graph** (§2): "what caused what." May be cyclic. Used for
   paradox/satisfiability checking (§5.2) and for validating observer
   traversal order (§5.3).
-- Whether/how a **branching or merging timeline topology** (parallel
-  universes forking and possibly rejoining) is represented is a **separate,
-  currently unresolved** concern — see Open Questions §8. Do not assume the
-  predecessor graph doubles as a branch-topology graph; they may need to be
-  independent structures.
+- **Branching/merging timeline topology** — resolved (§3, §4): every `Event`
+  carries a mandatory `universe` tag, and fork/merge points are *derived* by
+  finding where the predecessor graph's edges cross `universe` boundaries.
+  The predecessor graph itself is unchanged by this — it still means only
+  "what caused what" — so the two concerns stay independent as required
+  here, without needing a second stored graph.
 
 ### 5.2 Cycles vs. paradoxes
 
@@ -141,13 +215,18 @@ Some observers may traverse a stretch of the predecessor graph in reverse
 direction for that stretch — e.g. entropy-inverted characters).
 
 This requires **no change to `Event` or the predecessor graph**. It's
-captured entirely by the `direction` field on `Moment` (§3):
+captured entirely by the `direction` field on `Moment` (§3), which — per the
+note in §3 — governs the *step into* that moment from the previous one:
 
-- `"forward"` segment: the observer's moment order must be consistent with
-  predecessor order — never witness an effect-moment before all the
-  cause-moments it depends on.
-- `"inverted"` segment: the requirement is reversed for that stretch — the
+- `"forward"` step: the moment being stepped into must be consistent with
+  predecessor order relative to the previous moment — never witness an
+  effect-moment before all the cause-moments it depends on.
+- `"inverted"` step: the requirement is reversed for that step — the
   observer walks from effect toward cause.
+
+Consecutive `direction` values need not match — an observer can flip
+mid-sequence (e.g. forward, forward, inverted, inverted, forward), and each
+step's own `direction` is checked independently against the step before it.
 
 Two observers (one forward, one inverted) can still validly share a moment
 at the same event — this uses the same shared-event mechanism as any other
@@ -197,11 +276,12 @@ exploration, not the primary direction):
 
 ## 8. Open questions (intentionally left open)
 
-1. **Branching/merging timeline topology.** How do parallel-universe forks
-   and merges interact with the predecessor-graph + observer model? Does
-   this need a separate branch/universe-id structure, or can it be encoded
-   entirely through the predecessor graph and observer traversal? (See
-   §5.1.)
+1. ~~**Branching/merging timeline topology.**~~ **RESOLVED** — see §3, §4,
+   §5.1: mandatory `universe: UniverseID` on `Event`; fork/merge points are
+   derived, not a separate stored graph. Still open, and deferred to the
+   viz-design pass: how the chart should *render* universe boundaries
+   (separate lane groups? color per universe? something else?) — see new
+   item 8 below.
 2. **Event content model.** What does "content" of an event actually consist
    of, and how are per-edge constraints on content represented and
    evaluated? Needed to actually implement the satisfiability/paradox check
@@ -215,13 +295,54 @@ exploration, not the primary direction):
    default for the Y axis, and how does the UI let the user switch it?
 6. **Inverted-segment rendering details.** Exact visual treatment for
    direction flips and for forward/inverted meetings.
-7. **Tech stack.** Not prescribed in this document — implementer's choice,
-   to be confirmed.
+7. ~~**Tech stack.**~~ **RESOLVED** — see §10.
+8. **Universe rendering.** *(new)* How should the subway-map chart visually
+   indicate universe boundaries and fork/merge points, now that they're
+   defined (§4)? E.g. color-per-universe, separate lane groupings, explicit
+   fork/merge glyphs at those events. Not yet decided.
 
 ## 9. Non-goals for this pass
 
 - Real GR-style closed timelike curves / global self-consistency solving
   (Novikov as a fixed point over the *entire* loop) — out of scope; this
   spec targets self-consistent single-loop stories, not general relativity.
-- Real-time collaborative editing, persistence layer, etc. — not addressed
-  here.
+- Real-time collaborative editing, server-side/backend persistence, and
+  live multi-author merging are out of scope for this pass. Local browser
+  persistence and file-based import/export *are* in scope — see §10; the
+  mandatory-UUID/mandatory-universe design keeps the door open for a future
+  multi-author merge feature, but the merge logic/UI itself is not being
+  built now.
+
+## 10. Implementation decisions (resolved)
+
+**Deliverable shape**: frontend-only, static files, no backend — this
+repository ships as a folder that can be built (`vite build`) and hosted
+anywhere static (or run locally). It must be *served* over `http://`
+(`vite preview`, `npx serve`, GitHub Pages, etc.) rather than opened
+directly via `file://` — `localStorage` behaves inconsistently across
+browsers under the `file://` origin (e.g. Chrome effectively shares one
+storage bucket across all local files opened this way), so a trivial static
+server is required even though there's no real backend.
+
+**Tech stack**:
+- **Svelte + TypeScript**, built with **Vite**. Chosen over React for a
+  smaller dependency footprint and no virtual-DOM runtime; Svelte compiles
+  away at build time. Chosen over no framework at all because the app needs
+  nontrivial UI state (observer/universe selection, scrubbing) that's
+  tedious to hand-roll.
+- **SVG**, not Canvas, for the chart itself — each element is a real DOM
+  node, so hover/click/CSS-transition interactivity is native and doesn't
+  require manual hit-testing.
+- For layout math (Y-axis scale, connector curve generation), pull in only
+  small **D3 submodules** (`d3-scale`, `d3-shape`, `d3-array`) rather than
+  the full `d3` bundle — Svelte owns the DOM and animation, so `d3-selection`
+  / `d3-transition` aren't needed.
+
+**Persistence & data portability**: the `Story` document (§3) is
+autosaved to `localStorage` as it's edited, plus explicit **JSON
+export/import** for backup and sharing between people. This is the reason
+`EventID`/`ObserverID`/`UniverseID` are UUIDs and `Event.universe` is
+mandatory rather than an implicit default (§3) — it keeps two independently
+authored `Story` documents safely combinable later (a real merge
+feature/UI is *not* being built now — see §9 — but the identifiers won't
+need to change when it is).
