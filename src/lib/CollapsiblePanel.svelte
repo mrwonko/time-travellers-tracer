@@ -1,61 +1,89 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Icon from './Icon.svelte';
+  import { chamferClass } from './ChamferBox.svelte';
 
   let {
     title,
+    titleSnippet,
     count,
-    collapsed = $bindable(false),
+    open = $bindable(true),
+    actions,
     children,
   }: {
-    title: string;
+    title?: string;
+    titleSnippet?: Snippet;
     count?: number;
-    collapsed?: boolean;
+    open?: boolean;
+    actions?: Snippet;
     children: Snippet;
   } = $props();
 </script>
 
-<section class="panel chamfer-bordered">
-  <button
-    type="button"
-    class="panel-head"
-    aria-expanded={!collapsed}
-    onclick={() => (collapsed = !collapsed)}
-  >
-    <span class="chevron" class:open={!collapsed}>
+<!-- <summary> must be a *direct* child of <details> to be recognized as
+     its native disclosure label — nesting it inside a wrapper component
+     (even ChamferBox) makes the browser ignore it and fall back to a
+     generic "Details" label instead. So the chamfer/border classes are
+     applied straight to this literal <details>, via ChamferBox's own
+     exported `chamferClass()` helper rather than a second copy of the
+     size/bordered → classname mapping. -->
+<details bind:open class="panel {chamferClass()}">
+  <summary class="panel-summary">
+    <span class="chevron">
       <Icon name="chevron" size={12} />
     </span>
-    <h2>{title}</h2>
+    {#if titleSnippet}
+      {@render titleSnippet()}
+    {:else}
+      <h2>{title}</h2>
+    {/if}
     {#if count !== undefined}
       <span class="count mono">{count}</span>
     {/if}
-  </button>
+    {#if actions}
+      <!-- Interactive controls inside <summary> would otherwise also
+           trigger the native disclosure toggle on click — stopping
+           propagation here is the standard way to let them handle their
+           own clicks without collapsing/expanding the panel. Not itself
+           an interactive element (the real controls are the rendered
+           `actions` children, which carry their own keyboard handling),
+           so the a11y click/keyboard-pairing rules don't apply here.
 
-  {#if !collapsed}
-    <div class="panel-body">
-      {@render children()}
-    </div>
-  {/if}
-</section>
+           Verified (both a real click in a real browser, and a
+           component-level browser test) that this only reliably
+           suppresses the toggle when `actions` renders real interactive
+           content — a <button>, e.g. IconButton, the only thing every
+           current caller passes. A plain non-interactive element with
+           just a click handler was NOT enough to stop the toggle in
+           testing — `actions` must render focusable controls, not bare
+           text/spans. -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <span class="panel-actions" onclick={(e) => e.stopPropagation()}>
+        {@render actions()}
+      </span>
+    {/if}
+  </summary>
+  <div class="panel-body">
+    {@render children()}
+  </div>
+</details>
 
 <style>
   .panel {
     padding: clamp(1rem, 2vw, 1.5rem);
   }
 
-  .panel-head {
-    width: 100%;
+  .panel-summary {
     display: flex;
     align-items: baseline;
     gap: 0.6rem;
-    background: none;
-    border: none;
-    color: inherit;
-    font-family: inherit;
-    padding: 0;
-    margin-bottom: 1rem;
     cursor: pointer;
-    text-align: left;
+    list-style: none;
+  }
+
+  .panel-summary::-webkit-details-marker {
+    display: none;
   }
 
   .chevron {
@@ -65,16 +93,26 @@
     transition: transform var(--duration-fast) var(--ease-standard);
   }
 
-  .chevron.open {
+  details[open] .chevron {
     transform: rotate(90deg);
   }
 
-  .panel-head h2 {
+  .panel-summary h2 {
     font-size: 1.1rem;
   }
 
   .count {
     font-size: 0.75rem;
     opacity: 0.5;
+  }
+
+  .panel-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
+  }
+
+  .panel-body {
+    margin-top: 1rem;
   }
 </style>
