@@ -17,6 +17,14 @@ test-results
 playwright-report
 playwright/.cache
 
+# Dev server log (.claude/skills/dev-server/start.sh)
+.dev-server.log
+
+# Claude Code local runtime state (personal to this machine/session, not
+# shared) — .claude/skills/ itself IS committed, these specific files aren't
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
