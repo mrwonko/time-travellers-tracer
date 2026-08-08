@@ -44,15 +44,16 @@
         not apply here.
       </p>
       <p>
-        The Tracer keeps no clock. It keeps your <em>sequence</em> &mdash;
-        the order in which you personally experienced each event, however
-        many times you have already lived it, and regardless of which
-        direction you were moving through it.
+        The Tracer keeps no clock, and it keeps nothing for you
+        automatically. It's a logbook &mdash; you write your
+        <em>sequence</em> into it: the order in which you personally
+        experienced each event, however many times you've already lived
+        it, and regardless of which direction you were moving through it.
       </p>
       <p>
-        When your line crosses another traveller's, at the same event, the
-        Tracer marks it. That is the only kind of encounter it understands
-        &mdash; and the only one that matters.
+        When your entries and another traveller's line up on the same
+        event, the Tracer marks it as a crossing. That is the only kind of
+        encounter it understands &mdash; and the only one that matters.
       </p>
     </section>
 
