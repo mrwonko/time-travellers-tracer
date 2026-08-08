@@ -72,10 +72,7 @@
         Standard causality is a courtesy, not a guarantee. Trace carefully.
       </p>
       <div class="cta-block">
-        <button class="cta chamfer-sm" type="button" disabled>
-          Open your Tracer
-        </button>
-        <p class="cta-note mono">AWAITING FIELD DEPLOYMENT</p>
+        <a class="cta chamfer-sm" href="#/editor">Open your Tracer</a>
       </div>
     </section>
   </main>
@@ -229,21 +226,20 @@
   }
 
   .cta {
+    display: inline-block;
     background: var(--color-accent);
     color: var(--color-ink);
-    border: none;
+    text-decoration: none;
     font-weight: 600;
     font-size: 0.95rem;
     padding: 0.75rem 1.5rem;
-    cursor: not-allowed;
-    opacity: 0.55;
+    cursor: pointer;
     transition: opacity var(--duration-fast) var(--ease-standard);
   }
 
-  .cta-note {
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-    opacity: 0.6;
+  .cta:hover,
+  .cta:focus-visible {
+    opacity: 0.85;
   }
 
   .meta {

@@ -34,6 +34,8 @@
   --duration-fast: 100ms;
   --ease-standard: ease-out;
 
+  --z-popover: 20;
+
   color-scheme: light;
 }
 
@@ -190,4 +192,81 @@ button {
     0% 100%,
     0% var(--chamfer-sm)
   );
+}
+
+/* ---------------------------------------------------------------------
+   Editor shared UI — form fields and data tables, used identically by
+   src/lib/lists/*.svelte and src/lib/MultiSelectCombobox.svelte. Kept
+   global (not component-scoped) specifically so they stay in sync across
+   those sibling files instead of being copy-pasted into each one.
+--------------------------------------------------------------------- */
+.field {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  border: var(--border-width) solid var(--color-border-strong);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+  width: 100%;
+}
+
+.field:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.muted {
+  opacity: 0.4;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  font-weight: 500;
+  padding: 0.4rem 0.6rem;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.data-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: var(--border-width) solid var(--color-border);
+  vertical-align: middle;
+}
+
+.data-table tr.add-row td {
+  border-bottom: none;
+  padding-top: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .data-table,
+  .data-table thead,
+  .data-table tbody,
+  .data-table th,
+  .data-table td,
+  .data-table tr {
+    display: block;
+  }
+
+  .data-table thead tr {
+    display: none;
+  }
+
+  .data-table tbody tr:not(.add-row) {
+    border-bottom: var(--border-width) solid var(--color-border);
+    padding: 0.5rem 0;
+  }
+
+  .data-table td {
+    border-bottom: none;
+    padding: 0.2rem 0;
+  }
 }

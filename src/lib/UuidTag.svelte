@@ -1,6 +1,9 @@
 <script lang="ts">
-  let { id }: { id: string } = $props();
-  let revealed = $state(false);
+  let { id, initialRevealed = false }: { id: string; initialRevealed?: boolean } = $props();
+  // Deliberately just a one-time initial value, like useState's initializer
+  // — later changes to the prop shouldn't reset user interaction.
+  // svelte-ignore state_referenced_locally
+  let revealed = $state(initialRevealed);
 </script>
 
 <span class="uuid">

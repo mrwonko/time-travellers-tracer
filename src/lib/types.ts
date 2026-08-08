@@ -14,6 +14,11 @@ export interface StoryUniverse {
 export interface StoryEvent {
   id: EventID;
   label?: string;
+  // Free text for now (e.g. local time-of-day, other notes) — separate
+  // from `label`, which is the short display name used everywhere else
+  // (predecessor lists, moment displays). Not used by any algorithm,
+  // same spirit as `label` itself.
+  description?: string;
   predecessors: EventID[];
   universe: UniverseID;
 }
