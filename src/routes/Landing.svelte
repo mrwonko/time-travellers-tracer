@@ -37,7 +37,7 @@
       </p>
     </section>
 
-    <section class="orientation chamfer">
+    <section class="orientation chamfer-bordered">
       <p class="orientation-label mono">ORIENTATION &mdash; READ BEFORE FIRST USE</p>
       <p>
         Standard chronometers assume a single, shared timeline. Yours does
@@ -58,7 +58,7 @@
 
     <section class="capabilities">
       {#each capabilities as cap (cap.index)}
-        <article class="capability chamfer-sm">
+        <article class="capability chamfer-sm-bordered">
           <p class="capability-index mono">{cap.index}</p>
           <h2>{cap.title}</h2>
           <p>{cap.body}</p>
@@ -157,8 +157,6 @@
   }
 
   .orientation {
-    background: var(--color-panel-bg);
-    border: var(--border-width) solid var(--color-border);
     padding: 1.75rem 2rem;
     display: flex;
     flex-direction: column;
@@ -182,14 +180,11 @@
   .capabilities {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-    gap: var(--border-width);
-    background: var(--color-border);
-    border: var(--border-width) solid var(--color-border);
+    gap: 1rem;
     margin-bottom: 2.5rem;
   }
 
   .capability {
-    background: var(--color-panel-bg);
     padding: 1.5rem;
   }
 
