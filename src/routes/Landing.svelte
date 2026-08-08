@@ -1,4 +1,8 @@
 <script lang="ts">
+  import ChamferBox from '../lib/ChamferBox.svelte';
+  import PageHeader from '../lib/PageHeader.svelte';
+  import PageFooter from '../lib/PageFooter.svelte';
+
   const capabilities = [
     {
       index: '01',
@@ -19,13 +23,7 @@
 </script>
 
 <div class="page">
-  <header class="bar">
-    <div class="wordmark">
-      <span class="mark chamfer-sm" aria-hidden="true"></span>
-      <span class="wordmark-text">TIME TRAVELLER'S TRACER</span>
-    </div>
-    <span class="tag mono">MODEL TT&#8209;01 &middot; FIELD EDITION</span>
-  </header>
+  <PageHeader tag="MODEL TT&#8209;01 &middot; FIELD EDITION" paddingX="0" />
 
   <main>
     <section class="hero">
@@ -37,7 +35,7 @@
       </p>
     </section>
 
-    <section class="orientation chamfer-bordered">
+    <ChamferBox tag="section" class="orientation">
       <p class="orientation-label mono">ORIENTATION &mdash; READ BEFORE FIRST USE</p>
       <p>
         Standard chronometers assume a single, shared timeline. Yours does
@@ -55,29 +53,29 @@
         event, the Tracer marks it as a crossing. That is the only kind of
         encounter it understands &mdash; and the only one that matters.
       </p>
-    </section>
+    </ChamferBox>
 
     <section class="capabilities">
       {#each capabilities as cap (cap.index)}
-        <article class="capability chamfer-sm-bordered">
+        <ChamferBox tag="article" size="sm" class="capability">
           <p class="capability-index mono">{cap.index}</p>
           <h2>{cap.title}</h2>
           <p>{cap.body}</p>
-        </article>
+        </ChamferBox>
       {/each}
     </section>
 
-    <section class="cta-bar chamfer">
+    <ChamferBox tag="section" bordered={false} class="cta-bar">
       <p class="advisory">
         Standard causality is a courtesy, not a guarantee. Trace carefully.
       </p>
       <div class="cta-block">
-        <a class="cta chamfer-sm" href="#/editor">Open your Tracer</a>
+        <ChamferBox tag="a" size="sm" bordered={false} class="cta" href="#/editor">Open your Tracer</ChamferBox>
       </div>
-    </section>
+    </ChamferBox>
   </main>
 
-  <footer class="meta mono">TT/OPS &middot; REV. 0.1 &middot; UNCLASSIFIED &mdash; PERSONAL COPY</footer>
+  <PageFooter text="TT/OPS &middot; REV. 0.1 &middot; UNCLASSIFIED &mdash; PERSONAL COPY" />
 </div>
 
 <style>
@@ -88,42 +86,6 @@
     min-height: 100svh;
     display: flex;
     flex-direction: column;
-  }
-
-  .bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1.25rem 0;
-    border-bottom: var(--border-width) solid var(--color-border);
-    flex-wrap: wrap;
-  }
-
-  .wordmark {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .mark {
-    width: 1.1rem;
-    height: 1.1rem;
-    background: var(--color-accent);
-    flex: none;
-  }
-
-  .wordmark-text {
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    font-size: 0.95rem;
-  }
-
-  .tag {
-    font-size: 0.75rem;
-    letter-spacing: 0.04em;
-    color: var(--color-fg);
-    opacity: 0.6;
   }
 
   .hero {
@@ -154,7 +116,11 @@
     opacity: 0.85;
   }
 
-  .orientation {
+  /* :global() here because the class is passed through to ChamferBox's
+     own rendered element, not applied to an element literally present in
+     this component's template — Svelte's scoping hash wouldn't match it
+     otherwise. */
+  :global(.orientation) {
     padding: 1.75rem 2rem;
     display: flex;
     flex-direction: column;
@@ -169,7 +135,7 @@
     margin: 0 0 0.25rem;
   }
 
-  .orientation em {
+  :global(.orientation) em {
     font-style: normal;
     color: var(--color-accent-ink);
     font-weight: 600;
@@ -182,7 +148,7 @@
     margin-bottom: 2.5rem;
   }
 
-  .capability {
+  :global(.capability) {
     padding: 1.5rem;
   }
 
@@ -192,17 +158,17 @@
     margin: 0 0 0.75rem;
   }
 
-  .capability h2 {
+  :global(.capability) h2 {
     font-size: 1.05rem;
     margin: 0 0 0.5rem;
   }
 
-  .capability p:not(.capability-index) {
+  :global(.capability) p:not(.capability-index) {
     opacity: 0.8;
     font-size: 0.95rem;
   }
 
-  .cta-bar {
+  :global(.cta-bar) {
     background: var(--color-ink);
     color: var(--color-paper);
     padding: 1.75rem 2rem;
@@ -225,7 +191,7 @@
     gap: 0.5rem;
   }
 
-  .cta {
+  :global(.cta) {
     display: inline-block;
     background: var(--color-accent);
     color: var(--color-ink);
@@ -237,22 +203,13 @@
     transition: opacity var(--duration-fast) var(--ease-standard);
   }
 
-  .cta:hover,
-  .cta:focus-visible {
+  :global(.cta):hover,
+  :global(.cta):focus-visible {
     opacity: 0.85;
   }
 
-  .meta {
-    margin-top: auto;
-    padding-top: 2.5rem;
-    font-size: 0.7rem;
-    letter-spacing: 0.06em;
-    opacity: 0.45;
-    text-align: center;
-  }
-
   @media (max-width: 30rem) {
-    .cta-bar {
+    :global(.cta-bar) {
       flex-direction: column;
       align-items: flex-start;
     }
@@ -262,7 +219,7 @@
       width: 100%;
     }
 
-    .cta {
+    :global(.cta) {
       width: 100%;
       text-align: center;
     }

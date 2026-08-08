@@ -1,6 +1,7 @@
 <script lang="ts">
   import { generateId } from '../lib/id';
   import CollapsiblePanel from '../lib/CollapsiblePanel.svelte';
+  import PageHeader from '../lib/PageHeader.svelte';
   import UniverseList from '../lib/lists/UniverseList.svelte';
   import EventList from '../lib/lists/EventList.svelte';
   import ObserverList from '../lib/lists/ObserverList.svelte';
@@ -39,21 +40,14 @@
       name: 'The Handler',
       sequence: [
         { id: generateId(), events: [e3], direction: 'inverted' },
-        { id: generateId(), events: [e2], direction: 'inverted' },
-        { id: generateId(), events: [e1], direction: 'inverted' },
+        { id: generateId(), events: [e2, e1], direction: 'inverted' },
       ],
     },
   ]);
 </script>
 
 <div class="editor">
-  <header class="bar">
-    <div class="wordmark">
-      <span class="mark chamfer-sm" aria-hidden="true"></span>
-      <span class="wordmark-text">TIME TRAVELLER'S TRACER</span>
-    </div>
-    <span class="tag mono">EDITOR &middot; ENTRY MASKS &middot; NOT PERSISTED</span>
-  </header>
+  <PageHeader tag="EDITOR &middot; ENTRY MASKS &middot; NOT PERSISTED" />
 
   <main class="layout">
     <CollapsiblePanel title="Events" count={events.length}>
@@ -78,41 +72,6 @@
     min-height: 100svh;
     display: flex;
     flex-direction: column;
-  }
-
-  .bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1.25rem clamp(1rem, 3vw, 3rem);
-    border-bottom: var(--border-width) solid var(--color-border);
-    flex-wrap: wrap;
-  }
-
-  .wordmark {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .mark {
-    width: 1.1rem;
-    height: 1.1rem;
-    background: var(--color-accent);
-    flex: none;
-  }
-
-  .wordmark-text {
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    font-size: 0.95rem;
-  }
-
-  .tag {
-    font-size: 0.75rem;
-    letter-spacing: 0.04em;
-    opacity: 0.6;
   }
 
   .layout {
