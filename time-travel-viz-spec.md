@@ -358,7 +358,8 @@ part of this phase — it's the next one, once the editor exists.
 
 **Visual design language** for the editor (and, later, the graph) is
 decided separately in `design-language.md` — geometric/high-contrast/
-retro-futuristic direction (Marathon, Andor's HOX/POX and Narkina 5 as
-references), near-zero motion in the editor vs. a real animation budget in
+retro-futuristic direction (Marathon, House of X/Powers of X comics, and
+Andor's Narkina 5 as references), near-zero motion in the editor vs. a
+real animation budget in
 the future graph view. Treat it as a confirmed direction, not yet tuned
 against real screens — revisit once Phase 1 has actual pages to look at.

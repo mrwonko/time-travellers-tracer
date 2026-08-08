@@ -8,8 +8,12 @@ once the first real editor screens exist to look at.
 
 - **Marathon** (2025) — bold geometric HUD type, high contrast, bright
   accent colors against dark/light grounds, angular cut corners.
-- **HOX/POX holographic displays** (*Andor*) — thin wireframe/blueprint
-  diagrams, sparse monospace labels, technical/schematic feel.
+- **House of X / Powers of X** (2019 comics, graphic design by Tom Muller)
+  — infographic-heavy page design: technical schematics, timelines,
+  evolutionary/data diagrams rendered as in-story artifacts, sparse
+  monospace labels. Especially relevant here since those pages are
+  literally doing what our future graph view needs to do — turning
+  branching timeline/lineage data into a legible diagram.
 - **Narkina 5 prison** (*Andor*) — stark white, clinical, brutalist
   geometry, high-contrast lighting, a single saturated color (the
   jumpsuits) popping against white/gray.
@@ -31,10 +35,10 @@ technical/instrument-panel typographic register.
 
 - Base pair: near-black ink (around `#0a0a0a`, not pure black) on
   paper-white (around `#f5f5f2`, not pure white) — the stark two-tone
-  contrast from Narkina 5 / HOX-POX.
+  contrast from Narkina 5 / House of X-Powers of X.
 - Built as design tokens from the start, covering both a light theme
   (default — this is a productivity tool, used in daylight) and a dark
-  theme (closer to the hologram feel) from the same token set.
+  theme (closer to Marathon's HUD-on-dark feel) from the same token set.
 - One **primary saturated accent**, used sparingly, for focus states,
   primary actions, and "this is live/selected": leaning **amber/orange**
   (echoes the prison-jumpsuit pop-of-color-on-white, also reads as a

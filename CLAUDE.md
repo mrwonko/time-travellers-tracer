@@ -23,9 +23,10 @@ but must be served over `http://` (not opened via `file://`) since the app
 relies on `localStorage`.
 
 **Visual design** (`design-language.md`, full detail there): geometric,
-high-contrast, retro-futuristic (references: Marathon (2025), *Andor*'s
-HOX/POX displays and Narkina 5 prison) — near-black ink on paper-white base
-tokens (light default, dark theme available), sharp corners with a
+high-contrast, retro-futuristic (references: Marathon (2025), House of
+X/Powers of X comics (design by Tom Muller), and *Andor*'s Narkina 5
+prison) — near-black ink on paper-white base tokens (light default, dark
+theme available), sharp corners with a
 chamfered-corner motif, amber primary / cyan secondary saturated accents,
 flat hairline-border layering (no shadows/gradients). Motion is split by
 surface: **near-zero motion in editor/data-entry UI** (snappy, keyboard-first,
