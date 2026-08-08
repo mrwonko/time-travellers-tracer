@@ -1,35 +1,43 @@
 <script lang="ts">
+  import ChamferBox from './ChamferBox.svelte';
+
   let {
     message,
     onUndo,
     onDismiss,
-    duration = 6000,
+    durationMS = 6000,
   }: {
     message: string;
     onUndo: () => void;
     onDismiss: () => void;
-    duration?: number;
+    durationMS?: number;
   } = $props();
 
   $effect(() => {
-    const timer = setTimeout(onDismiss, duration);
+    const timer = setTimeout(onDismiss, durationMS);
     return () => clearTimeout(timer);
   });
 </script>
 
-<div class="undo-toast chamfer-sm-bordered" role="status">
-  <span>{message}</span>
-  <button type="button" class="undo-action mono" onclick={onUndo}>UNDO</button>
-</div>
+<ChamferBox size="sm" class="undo-toast">
+  <div class="undo-toast-inner" role="status">
+    <span>{message}</span>
+    <button type="button" class="undo-action mono" onclick={onUndo}>UNDO</button>
+  </div>
+</ChamferBox>
 
 <style>
-  .undo-toast {
+  :global(.undo-toast) {
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .undo-toast-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.6rem 0.9rem;
-    margin-top: 0.75rem;
     font-size: 0.85rem;
   }
 

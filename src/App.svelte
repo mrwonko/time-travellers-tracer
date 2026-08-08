@@ -3,6 +3,7 @@
   import Landing from './routes/Landing.svelte';
   import Editor from './routes/Editor.svelte';
   import ComponentLibrary from './routes/ComponentLibrary.svelte';
+  import ToastHost from './lib/ToastHost.svelte';
 
   const routes: RouteDefinition = {
     '/': Landing,
@@ -14,3 +15,4 @@
 </script>
 
 <Router {routes} />
+<ToastHost />
