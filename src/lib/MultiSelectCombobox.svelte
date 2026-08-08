@@ -1,5 +1,6 @@
 <script lang="ts">
   import { generateId } from './id';
+  import ChamferBox from './ChamferBox.svelte';
 
   let {
     options,
@@ -31,6 +32,15 @@
   // panel ancestors can't clip it (unlike a plain position:fixed
   // descendant); light-dismiss on outside click/tap; and Escape-to-close.
   // None of that is reimplemented here anymore.
+  //
+  // This element (the `[popover]` host) is deliberately *not* where the
+  // chamfer/border classes live — they used to be applied directly here,
+  // which silently clobbered the popover's native `position: fixed` with
+  // `position: relative` (author CSS always wins over the UA stylesheet,
+  // regardless of specificity), which in turn made the position-anchor
+  // setup below completely inert. The host now owns positioning only;
+  // <ChamferBox> nested inside owns the border/chamfer chrome, on its own
+  // DOM layer, so the two concerns can't collide again.
   //
   // FIXME: light-dismiss during a drag is inconsistent. A drag that
   // starts on (or crosses over) the popover and ends outside it does NOT
@@ -66,29 +76,33 @@
 <div
   id={popoverId}
   popover="auto"
-  class="combobox-popover chamfer-sm-bordered"
+  class="combobox-popover-host"
   style="position-anchor: {anchorName}"
   ontoggle={handleToggle}
 >
-  <input
-    bind:this={filterInput}
-    type="text"
-    class="field"
-    placeholder="Filter…"
-    bind:value={filter}
-  />
-  <ul class="combobox-options">
-    {#each filtered as option (option.id)}
-      <li>
-        <label>
-          <input type="checkbox" bind:group={selected} value={option.id} />
-          {option.label}
-        </label>
-      </li>
-    {:else}
-      <li class="empty muted">No matches</li>
-    {/each}
-  </ul>
+  <ChamferBox size="sm" class="combobox-chamfer">
+    <div class="combobox-inner">
+      <input
+        bind:this={filterInput}
+        type="text"
+        class="field"
+        placeholder="Filter…"
+        bind:value={filter}
+      />
+      <ul class="combobox-options">
+        {#each filtered as option (option.id)}
+          <li>
+            <label>
+              <input type="checkbox" bind:group={selected} value={option.id} />
+              {option.label}
+            </label>
+          </li>
+        {:else}
+          <li class="empty muted">No matches</li>
+        {/each}
+      </ul>
+    </div>
+  </ChamferBox>
 </div>
 
 <style>
@@ -101,7 +115,7 @@
     opacity: 0.5;
   }
 
-  .combobox-popover {
+  .combobox-popover-host {
     /* TODO: flips above the trigger when there isn't room below is
        postponed. CSS `position-try: flip-block` (paired with
        anchor-name/position-anchor above) is the native way to do this,
@@ -111,7 +125,10 @@
        found yet. For now this always opens below the trigger, capped to
        a fixed max-height with internal scroll if the option list is
        long. Revisit with a JS-computed fallback (already proven correct
-       — see git history) if this turns out to matter in practice. */
+       — see git history) if this turns out to matter in practice. This
+       was re-tested after the position:fixed fix above (see ChamferBox
+       split note) in case that was the actual blocker — still didn't
+       trigger reliably, so it stays a TODO. */
     position-area: bottom span-right;
     margin: 0;
     /* The browser gives top-layer popovers a default focus outline on
@@ -123,18 +140,38 @@
     min-width: anchor-size(width);
     width: max-content;
     max-height: min(60vh, 20rem);
-    padding: 0.6rem;
-    flex-direction: column;
-    gap: 0.5rem;
-    overflow-y: auto;
   }
 
   /* The UA stylesheet hides closed popovers via `display: none`. Setting
-     `display: flex` unconditionally on .combobox-popover above would
-     override that default and leave it permanently visible — scoping it
-     to :popover-open is what actually keeps it hidden until shown. */
-  .combobox-popover:popover-open {
+     `display: flex` unconditionally above would override that default
+     and leave it permanently visible — scoping it to :popover-open is
+     what actually keeps it hidden until shown. flex-direction: column so
+     the nested ChamferBox can flex/shrink to the max-height cap instead
+     of overflowing it. */
+  .combobox-popover-host:popover-open {
     display: flex;
+    flex-direction: column;
+  }
+
+  /* :global() because the class is passed through to ChamferBox's own
+     rendered element, not applied to an element literally present in
+     this component's template. min-height: 0 lets it shrink below its
+     content's intrinsic height inside the flex host, which is what
+     makes the inner overflow-y: auto actually kick in at max-height
+     instead of the host just growing past it. */
+  :global(.combobox-chamfer) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .combobox-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem;
+    overflow-y: auto;
+    min-height: 0;
   }
 
   .combobox-options {
