@@ -1,6 +1,5 @@
 <script lang="ts">
   import { generateId } from './id';
-  import IconButton from './IconButton.svelte';
 
   let {
     options,
@@ -22,7 +21,6 @@
   let open = $state(false);
   let filter = $state('');
   let filterInput: HTMLInputElement | undefined = $state();
-  let popoverEl: HTMLDivElement | undefined = $state();
 
   let filtered = $derived(
     options.filter((o) => o.label.toLowerCase().includes(filter.toLowerCase())),
@@ -49,10 +47,6 @@
       filterInput?.focus();
     }
   }
-
-  function close() {
-    popoverEl?.hidePopover();
-  }
 </script>
 
 <button
@@ -70,7 +64,6 @@
 </button>
 
 <div
-  bind:this={popoverEl}
   id={popoverId}
   popover="auto"
   class="combobox-popover chamfer-sm-bordered"
@@ -96,9 +89,6 @@
       <li class="empty muted">No matches</li>
     {/each}
   </ul>
-  <div class="combobox-footer">
-    <IconButton icon="save" label="Done" variant="accent" size="sm" onclick={close} />
-  </div>
 </div>
 
 <style>
@@ -177,10 +167,5 @@
   .combobox-options .empty {
     padding: 0.5rem 0.3rem;
     cursor: default;
-  }
-
-  .combobox-footer {
-    display: flex;
-    justify-content: flex-end;
   }
 </style>
