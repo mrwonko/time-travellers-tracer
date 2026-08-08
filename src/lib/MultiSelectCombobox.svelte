@@ -31,12 +31,17 @@
   // The native `popover` attribute (not a hand-rolled open/close + portal)
   // handles: rendering in the top layer, so clip-path on the chamfered
   // panel ancestors can't clip it (unlike a plain position:fixed
-  // descendant); light-dismiss on outside click/tap, correctly ignoring
-  // drag/scroll gestures on *both* mouse and touch — confirmed by testing
-  // real touch dispatch, not just mouse emulation, since browsers only
-  // give touch its own tap-vs-scroll gesture recognition and a naive
-  // `click` listener doesn't get the same treatment for mouse; and
-  // Escape-to-close. None of that is reimplemented here anymore.
+  // descendant); light-dismiss on outside click/tap; and Escape-to-close.
+  // None of that is reimplemented here anymore.
+  //
+  // FIXME: light-dismiss during a drag is inconsistent. A drag that
+  // starts on (or crosses over) the popover and ends outside it does NOT
+  // close it — confirmed with real mouse and touch dispatch. But a drag
+  // that starts and ends entirely outside the popover, never touching it,
+  // still closes it. Only the former was re-verified after switching to
+  // the native popover; the latter is the actual real-world gesture (e.g.
+  // dragging the page to scroll it into view) and needs its own fix —
+  // deliberately not chasing that further right now.
   function handleToggle(event: ToggleEvent) {
     open = event.newState === 'open';
     if (open) {

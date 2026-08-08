@@ -113,7 +113,7 @@
     <section class="swatch chamfer-bordered">
       <h2>MultiSelectCombobox</h2>
       <p class="note">
-        Generic over <code>&#123; id, label &#125;</code> options. Trigger matches the height of a normal <code>.field</code> input. Uses the native <code>popover</code> attribute + CSS anchor positioning, not a hand-rolled portal/dismiss — it renders in the browser's top layer (escaping <code>clip-path</code> on the chamfered panels for free) and gets outside-click/tap light-dismiss and Escape-to-close from the browser, correctly telling a tap apart from a drag/scroll on both mouse and touch. Above/below flip is a TODO — it always opens below the trigger for now.
+        Generic over <code>&#123; id, label &#125;</code> options. Trigger matches the height of a normal <code>.field</code> input. Uses the native <code>popover</code> attribute + CSS anchor positioning, not a hand-rolled portal/dismiss — it renders in the browser's top layer (escaping <code>clip-path</code> on the chamfered panels for free) and gets outside-click/tap light-dismiss and Escape-to-close from the browser. FIXME: that light-dismiss still closes on a drag that stays entirely outside the popover (e.g. dragging the page to scroll it into view) — only drags that cross the popover itself are confirmed safe. Above/below flip is also a TODO — it always opens below the trigger for now.
       </p>
       <MultiSelectCombobox options={comboboxOptions} bind:selected={comboboxSelected} placeholder="Select events…" />
       <p class="note">
