@@ -26,9 +26,13 @@
   //   press that starts near the edge and drags off before release can't
   //   lose the element under the pointer. Scaling the *button* was tried
   //   first and rejected for exactly that reason.
-  // - Click-completion feedback (the color pulse below) still needs to
-  //   fire only after a real click, since :active alone doesn't tell you
-  //   whether the press actually ended in a click vs. a drag-off. Re-
+  // - Click-completion feedback still needs to fire only after a real
+  //   click, since :active alone doesn't tell you whether the press
+  //   actually ended in a click vs. a drag-off. A color pulse on just the
+  //   icon glyph was tried first and judged too subtle; it's a full-
+  //   background flash now (icon-btn-bg-flash below), closer in kind to
+  //   the hover state's opacity shift but as a brief pulse rather than a
+  //   steady change, so it reads at a glance the way hover does. Re-
   //   keying this span on every click restarts its CSS animation from
   //   scratch, purely as a retroactive acknowledgment.
   let flashKey = $state(0);
@@ -46,15 +50,18 @@
   {disabled}
   onclick={handleClick}
 >
+  <span class="icon-btn-icon">
+    <Icon name={icon} size={size === 'sm' ? 14 : 16} />
+  </span>
   {#key flashKey}
-    <span class="icon-btn-flash">
-      <Icon name={icon} size={size === 'sm' ? 14 : 16} />
-    </span>
+    <span class="icon-btn-bg-flash" aria-hidden="true"></span>
   {/key}
 </button>
 
 <style>
   .icon-btn {
+    position: relative;
+    overflow: hidden;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -101,26 +108,46 @@
     outline-offset: 1px;
   }
 
-  .icon-btn-flash {
+  .icon-btn-icon {
     display: inline-flex;
-    animation: icon-btn-click-pulse 200ms var(--ease-standard);
+    position: relative;
+    z-index: 1;
   }
 
   /* Press feedback: scales only the icon, never the button box (see the
      comment above flashKey in the script for why). */
-  .icon-btn:active .icon-btn-flash {
+  .icon-btn:active .icon-btn-icon {
     transform: scale(0.85);
   }
 
-  /* Click-completion feedback: a brief color pulse to the secondary
-     (cyan) accent, distinct from both variants' resting colors (ink on
-     amber for default/accent, dimmed fg for ghost), then back. */
+  /* Click-completion feedback: a brief background flash across the whole
+     button in the secondary (cyan) accent, fading out — same idea as the
+     hover state's opacity shift (an accent-colored highlight), but as a
+     pulse instead of a steady state, and covering the full button rather
+     than just the icon glyph so it reads clearly at a glance. Sits below
+     the icon (z-index above, on .icon-btn-icon) so the glyph stays crisp
+     on top of it. */
+  .icon-btn-bg-flash {
+    position: absolute;
+    inset: 0;
+    /* Resting state matches the keyframe's `to` value — without this,
+       the element's opacity after the animation ends falls back to the
+       default (1, fully opaque) rather than holding at 0, since plain
+       `animation` (no explicit fill-mode) doesn't persist the end
+       keyframe. Without it, every button ends up permanently tinted
+       cyan the moment its one-shot animation finishes. */
+    opacity: 0;
+    background: var(--color-accent-secondary);
+    animation: icon-btn-click-pulse 200ms var(--ease-standard);
+    pointer-events: none;
+  }
+
   @keyframes icon-btn-click-pulse {
     from {
-      color: var(--color-accent-secondary-ink);
+      opacity: 0.7;
     }
     to {
-      color: inherit;
+      opacity: 0;
     }
   }
 </style>
