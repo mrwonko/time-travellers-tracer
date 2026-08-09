@@ -1,15 +1,38 @@
 <script lang="ts">
+  import { replace } from 'svelte-spa-router';
   import CollapsiblePanel from '../lib/CollapsiblePanel.svelte';
   import PageHeader from '../lib/PageHeader.svelte';
   import StoryToolbar from '../lib/StoryToolbar.svelte';
+  import StoryPicker from '../lib/StoryPicker.svelte';
   import UniverseList from '../lib/lists/UniverseList.svelte';
   import EventList from '../lib/lists/EventList.svelte';
   import ObserverList from '../lib/lists/ObserverList.svelte';
-  import { story } from '../lib/story.svelte';
+  import { story, registry, activeStoryId, switchToStory } from '../lib/story.svelte';
+
+  // Both '/editor' and '/editor/:id' route here (see App.svelte) — params.id
+  // is only present for the latter.
+  let { params = {} }: { params?: { id?: string } } = $props();
+
+  // '/editor' (no id): resolve to the currently-active story's own URL
+  // instead of rendering here directly, so the URL always carries the
+  // story id (spec's "current story id tracked via the URL"). Once params.id
+  // is present, switch the store to match it whenever it changes (covers
+  // both the initial load and switching via StoryPicker's navigation).
+  $effect(() => {
+    const id = params.id;
+    if (!id) {
+      replace(`/editor/${activeStoryId.value}`);
+      return;
+    }
+    switchToStory(id);
+  });
+
+  let activeStoryName = $derived(registry.find((s) => s.id === activeStoryId.value)?.name ?? '');
 </script>
 
 <div class="editor">
-  <PageHeader tag="EDITOR &middot; ENTRY MASKS">
+  <PageHeader tag={`EDITOR · ${activeStoryName}`}>
+    <StoryPicker />
     <StoryToolbar />
   </PageHeader>
 

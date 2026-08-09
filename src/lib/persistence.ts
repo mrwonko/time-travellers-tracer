@@ -61,3 +61,81 @@ export function parseStoredDocument(raw: string): Story {
   }
   return migrate(doc as StoredDocument);
 }
+
+// Multi-story support: a small registry document (separate from any single
+// story's own StoredDocument above) tracking which stories exist. Each
+// story's own document moves to its own key (storyStorageKey(id)); the
+// single-story STORAGE_KEY above becomes the *legacy* key, read only by
+// migrateLegacyDocument below.
+export const CURRENT_REGISTRY_SCHEMA_VERSION = 1;
+export const REGISTRY_STORAGE_KEY = 'time-travellers-tracer:index';
+
+export function storyStorageKey(id: string): string {
+  return `time-travellers-tracer:story:${id}`;
+}
+
+export interface StoryRegistryEntry {
+  id: string;
+  name: string;
+  updatedAt: string;
+}
+
+export interface RegistryDocument {
+  schemaVersion: number;
+  stories: StoryRegistryEntry[];
+}
+
+export function emptyRegistry(): RegistryDocument {
+  return { schemaVersion: CURRENT_REGISTRY_SCHEMA_VERSION, stories: [] };
+}
+
+export function serializeRegistry(registry: RegistryDocument): string {
+  return JSON.stringify(registry, null, 2);
+}
+
+// Same identity-passthrough-for-now shape as migrate() above, kept as its
+// own step for the same reason: an obvious place to add real migration
+// logic once a second registry schemaVersion exists.
+function migrateRegistry(doc: RegistryDocument): StoryRegistryEntry[] {
+  if (doc.schemaVersion === CURRENT_REGISTRY_SCHEMA_VERSION) return doc.stories;
+  throw new Error(`Unsupported story registry schemaVersion: ${doc.schemaVersion}`);
+}
+
+export function parseRegistryDocument(raw: string): StoryRegistryEntry[] {
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('Stored story registry is not an object');
+  }
+  const doc = parsed as Partial<RegistryDocument>;
+  if (typeof doc.schemaVersion !== 'number') {
+    throw new Error('Stored story registry is missing schemaVersion');
+  }
+  if (!Array.isArray(doc.stories)) {
+    throw new Error('Stored story registry has a malformed stories list');
+  }
+  return migrateRegistry(doc as RegistryDocument);
+}
+
+export interface LegacyMigrationResult {
+  storyId: string;
+  storedDoc: StoredDocument;
+  registry: RegistryDocument;
+}
+
+// One-time upgrade from the pre-multi-story single-document format: wraps
+// the existing story under a fresh id as the registry's sole entry, named
+// "My Story". Pure (no localStorage access) like the rest of this file —
+// story.svelte.ts's init logic does the actual read of the legacy key and
+// write/remove of the new ones.
+export function migrateLegacyDocument(raw: string): LegacyMigrationResult {
+  const story = parseStoredDocument(raw);
+  const storyId = generateId();
+  return {
+    storyId,
+    storedDoc: { schemaVersion: CURRENT_SCHEMA_VERSION, story },
+    registry: {
+      schemaVersion: CURRENT_REGISTRY_SCHEMA_VERSION,
+      stories: [{ id: storyId, name: 'My Story', updatedAt: new Date().toISOString() }],
+    },
+  };
+}
