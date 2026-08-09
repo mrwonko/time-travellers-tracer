@@ -147,7 +147,20 @@
     }
   }
 
+  // See ObserverCard's identical isSequenceGapExcluded for why: the gap
+  // right next to the dragged moment itself is never a real drop
+  // position, since it would just re-insert it where it already is.
+  function isMomentGapExcluded(beforeId: MomentID | null, afterId: MomentID | null): boolean {
+    const dragging = getDragging();
+    return dragging !== null && (dragging.id === beforeId || dragging.id === afterId);
+  }
+
+  function isMomentGapPotential(beforeId: MomentID | null, afterId: MomentID | null): boolean {
+    return isMomentsPotentialTarget && !isMomentGapExcluded(beforeId, afterId);
+  }
+
   function isMomentGapHovered(beforeId: MomentID | null, afterId: MomentID | null): boolean {
+    if (isMomentGapExcluded(beforeId, afterId)) return false;
     if (!hoveredMoment) return false;
     if (afterId !== null && hoveredMoment.id === afterId && hoveredMoment.edge === 'top') return true;
     if (beforeId !== null && hoveredMoment.id === beforeId && hoveredMoment.edge === 'bottom') return true;
@@ -192,7 +205,7 @@
     <div class="moments">
       <div class="moment-gap">
         <DropIndicatorLine
-          potential={isMomentsPotentialTarget}
+          potential={isMomentGapPotential(null, sequence.moments[0]?.id ?? null)}
           hovered={isMomentGapHovered(null, sequence.moments[0]?.id ?? null)}
         />
       </div>
@@ -213,7 +226,7 @@
         />
         <div class="moment-gap">
           <DropIndicatorLine
-            potential={isMomentsPotentialTarget}
+            potential={isMomentGapPotential(moment.id, sequence.moments[i + 1]?.id ?? null)}
             hovered={isMomentGapHovered(moment.id, sequence.moments[i + 1]?.id ?? null)}
           />
         </div>

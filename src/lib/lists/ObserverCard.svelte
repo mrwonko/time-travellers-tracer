@@ -182,7 +182,24 @@
     }
   }
 
+  // A gap whose immediate neighbor on either side is the sequence
+  // currently being dragged is never a real drop position — dropping it
+  // there would insert it right back where it already sits (its other
+  // neighbor's own canDrop already excludes exact-self, but the neighbor
+  // across the gap from it doesn't know that, so without this check the
+  // gap right next to the dragged sequence would still light up as if
+  // "drop before/after itself" were a real, different position).
+  function isSequenceGapExcluded(beforeId: SequenceID | null, afterId: SequenceID | null): boolean {
+    const dragging = getDragging();
+    return dragging !== null && (dragging.id === beforeId || dragging.id === afterId);
+  }
+
+  function isSequenceGapPotential(beforeId: SequenceID | null, afterId: SequenceID | null): boolean {
+    return isSequencesPotentialTarget && !isSequenceGapExcluded(beforeId, afterId);
+  }
+
   function isSequenceGapHovered(beforeId: SequenceID | null, afterId: SequenceID | null): boolean {
+    if (isSequenceGapExcluded(beforeId, afterId)) return false;
     if (!hoveredSequence) return false;
     if (afterId !== null && hoveredSequence.id === afterId && hoveredSequence.edge === 'top') return true;
     if (beforeId !== null && hoveredSequence.id === beforeId && hoveredSequence.edge === 'bottom') return true;
@@ -238,7 +255,7 @@
   <div class="sequences">
     <div class="sequence-gap">
       <DropIndicatorLine
-        potential={isSequencesPotentialTarget}
+        potential={isSequenceGapPotential(null, observer.sequences[0]?.id ?? null)}
         hovered={isSequenceGapHovered(null, observer.sequences[0]?.id ?? null)}
       />
     </div>
@@ -262,7 +279,7 @@
       />
       <div class="sequence-gap">
         <DropIndicatorLine
-          potential={isSequencesPotentialTarget}
+          potential={isSequenceGapPotential(sequence.id, observer.sequences[i + 1]?.id ?? null)}
           hovered={isSequenceGapHovered(sequence.id, observer.sequences[i + 1]?.id ?? null)}
         />
       </div>
