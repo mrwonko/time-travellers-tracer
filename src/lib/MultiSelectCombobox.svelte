@@ -23,6 +23,8 @@
   let filter = $state('');
   let filterInput: HTMLInputElement | undefined = $state();
   let triggerEl: HTMLButtonElement | undefined = $state();
+  let dropUp = $state(false);
+  let popoverMaxHeight = $state<number | undefined>(undefined);
 
   let filtered = $derived(
     options.filter((o) => o.label.toLowerCase().includes(filter.toLowerCase())),
@@ -51,23 +53,53 @@
   // the native popover; the latter is the actual real-world gesture (e.g.
   // dragging the page to scroll it into view) and needs its own fix —
   // deliberately not chasing that further right now.
-  // Scrolls the trigger away from the viewport's bottom edge before the
-  // popover (which always opens below it, see the TODO in the style
-  // block) renders, so there's room for it instead of it extending past
-  // the bottom of the visible page. `scroll-margin-bottom` on the trigger
-  // (below) tells scrollIntoView how much clearance to leave; the page
-  // itself also needs enough scrollable height below the trigger for
-  // there to be anywhere left to scroll *to* — see the padding-bottom
-  // note on ComponentLibrary's <main>, which is deliberately generous for
-  // this reason.
+  // Decides which side to open on and how tall the popover can be.
+  // Ported from the JS-computed positioning this component used before
+  // the native-popover rewrite (see git history at 15d7ac1^) — that
+  // logic was already proven correct, including the visualViewport
+  // preference for the mobile-keyboard case, so it's reused here instead
+  // of re-deriving it. The native `popover` + CSS anchor positioning
+  // still owns the actual left/top math; this only decides the
+  // `position-area` side (via the `dropUp` class below) and caps
+  // `max-height` to whichever side actually has room, rather than trying
+  // to make the page grow to fit a fixed-size popover (tried in an
+  // earlier pass — see PR review discussion — and rejected: it meant a
+  // permanent, content-unrelated bottom margin on every page using this
+  // component, for a page-growing effect that only mattered for one
+  // trigger position anyway).
+  function updatePosition() {
+    if (!triggerEl) return;
+    const rect = triggerEl.getBoundingClientRect();
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const spaceBelow = Math.max(0, viewportHeight - rect.bottom);
+    const spaceAbove = Math.max(0, rect.top);
+    const margin = 8;
+    dropUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+    popoverMaxHeight = Math.max(80, (dropUp ? spaceAbove : spaceBelow) - margin);
+  }
+
   function handleToggle(event: ToggleEvent) {
     open = event.newState === 'open';
     if (open) {
       filter = '';
       filterInput?.focus();
-      triggerEl?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      updatePosition();
     }
   }
+
+  // Re-run while open on viewport changes — most importantly the
+  // on-screen keyboard opening/closing on mobile, which can shrink the
+  // visual viewport without changing window.innerHeight.
+  $effect(() => {
+    if (!open) return;
+    const viewport = window.visualViewport;
+    window.addEventListener('resize', updatePosition);
+    viewport?.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      viewport?.removeEventListener('resize', updatePosition);
+    };
+  });
 </script>
 
 <button
@@ -89,7 +121,8 @@
   id={popoverId}
   popover="auto"
   class="combobox-popover-host"
-  style="position-anchor: {anchorName}"
+  class:combobox-popover-host-up={dropUp}
+  style="position-anchor: {anchorName}; {popoverMaxHeight ? `max-height: ${popoverMaxHeight}px;` : ''}"
   ontoggle={handleToggle}
 >
   <ChamferBox size="sm" class="combobox-chamfer">
@@ -121,11 +154,6 @@
   .combobox-trigger {
     text-align: left;
     cursor: pointer;
-    /* How much clearance scrollIntoView (see handleToggle) leaves below
-       the trigger — matches the popover's own max-height cap below plus
-       a small gap, so scrolling stops with just enough room for the
-       popover to render without being clipped by the viewport edge. */
-    scroll-margin-bottom: calc(20rem + 1rem);
   }
 
   .placeholder {
@@ -133,22 +161,19 @@
   }
 
   .combobox-popover-host {
-    /* TODO: flips above the trigger when there isn't room below is
-       postponed, and no longer the plan for the "extends past the
-       viewport" problem specifically — that's now handled by scrolling
-       the trigger into view with clearance before opening (see
-       handleToggle + .combobox-trigger's scroll-margin-bottom) rather
-       than by flipping the popover to the other side. CSS `position-try:
-       flip-block` (paired with anchor-name/position-anchor above) is
-       still the native way to do an actual flip if one is wanted later
-       for its own sake, but didn't trigger reliably in testing (Chrome
-       151) even with the anchor pushed into a viewport far too small to
-       fit below — either an implementation gap in this exact form, or a
-       syntax issue not found yet, re-tested after the position:fixed fix
-       above (see ChamferBox split note) in case that was the actual
-       blocker, still no luck. For now this always opens below the
-       trigger, capped to a fixed max-height with internal scroll if the
-       option list is long. */
+    /* Default side; flipped to open above the trigger instead via the
+       .combobox-popover-host-up class, set from JS (updatePosition in
+       the script) rather than CSS `position-try: flip-block` — that's
+       the native way to do this, paired with anchor-name/position-anchor
+       above, but didn't trigger reliably in testing (Chrome 151) even
+       with the anchor pushed into a viewport far too small to fit below,
+       re-tested after the position:fixed fix above (see ChamferBox split
+       note) in case that was the actual blocker, still no luck. `dropUp`
+       also drives the max-height cap (inline style below) to whichever
+       side actually has room, ported from this component's pre-native-
+       popover implementation (see git history at 15d7ac1^), so this
+       doesn't just flip blindly whenever there's *slightly* more room on
+       the other side. */
     position-area: bottom span-right;
     margin: 0;
     /* The browser gives top-layer popovers a default focus outline on
@@ -159,7 +184,14 @@
     max-width: min(24rem, 90vw);
     min-width: anchor-size(width);
     width: max-content;
+    /* Fallback for the instant between mount and the first `updatePosition()`
+       call (which sets the inline max-height that overrides this) — never
+       actually visible, since the popover isn't shown until it opens. */
     max-height: min(60vh, 20rem);
+  }
+
+  .combobox-popover-host-up {
+    position-area: top span-right;
   }
 
   /* The UA stylesheet hides closed popovers via `display: none`. Setting

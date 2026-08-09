@@ -102,17 +102,6 @@
     </ChamferBox>
 
     <ChamferBox tag="section" class="complib-swatch">
-      <h2>MultiSelectCombobox</h2>
-      <p class="note">
-        Generic over <code>&#123; id, label &#125;</code> options. Trigger matches the height of a normal <code>.field</code> input. Uses the native <code>popover</code> attribute + CSS anchor positioning, not a hand-rolled portal/dismiss — it renders in the browser's top layer (escaping <code>clip-path</code> on the chamfered panels for free) and gets outside-click/tap light-dismiss and Escape-to-close from the browser. FIXME: that light-dismiss still closes on a drag that stays entirely outside the popover (e.g. dragging the page to scroll it into view) — only drags that cross the popover itself are confirmed safe. It always opens below the trigger (an above/below flip is a TODO); opening scrolls the trigger into view with clearance so the popover has room instead of extending past the page — try it on this swatch, deliberately placed at the bottom of the page to exercise that.
-      </p>
-      <MultiSelectCombobox options={comboboxOptions} bind:selected={comboboxSelected} placeholder="Select events…" />
-      <p class="note">
-        Selected: <span class="mono">{comboboxSelected.length === 0 ? 'none' : comboboxSelected.map((id) => comboboxOptions.find((o) => o.id === id)?.label).join(', ')}</span>
-      </p>
-    </ChamferBox>
-
-    <ChamferBox tag="section" class="complib-swatch">
       <h2>ChamferBox</h2>
       <p class="note">
         The one place that applies the chamfered-corner clip-path classes (defined in its own <code>&lt;style&gt;</code> block, colocated with the <code>chamferClass()</code> helper) — every other chamfered shape in the app (bordered panels, the wordmark, the CTA button) goes through this instead of applying <code>chamfer(-sm)(-bordered)</code> by hand, so the border trick's required <code>position</code>/<code>isolation</code> pairing can't be forgotten or clobbered again the way it was on <code>MultiSelectCombobox</code>'s popover.
@@ -123,6 +112,17 @@
         <ChamferBox bordered={false} class="complib-chamfer-demo-box complib-chamfer-demo-solid">md, not bordered</ChamferBox>
         <ChamferBox size="sm" bordered={false} class="complib-chamfer-demo-box complib-chamfer-demo-solid">sm, not bordered</ChamferBox>
       </div>
+    </ChamferBox>
+
+    <ChamferBox tag="section" class="complib-swatch">
+      <h2>MultiSelectCombobox</h2>
+      <p class="note">
+        Generic over <code>&#123; id, label &#125;</code> options. Trigger matches the height of a normal <code>.field</code> input. Uses the native <code>popover</code> attribute + CSS anchor positioning, not a hand-rolled portal/dismiss — it renders in the browser's top layer (escaping <code>clip-path</code> on the chamfered panels for free) and gets outside-click/tap light-dismiss and Escape-to-close from the browser. FIXME: that light-dismiss still closes on a drag that stays entirely outside the popover (e.g. dragging the page to scroll it into view) — only drags that cross the popover itself are confirmed safe. Opening picks whichever side (above/below the trigger) actually has more room, JS-computed (native <code>position-try: flip-block</code> didn't trigger reliably in testing) — try it on this swatch, deliberately kept as the last one on the page to exercise the "not enough room below" case.
+      </p>
+      <MultiSelectCombobox options={comboboxOptions} bind:selected={comboboxSelected} placeholder="Select events…" />
+      <p class="note">
+        Selected: <span class="mono">{comboboxSelected.length === 0 ? 'none' : comboboxSelected.map((id) => comboboxOptions.find((o) => o.id === id)?.label).join(', ')}</span>
+      </p>
     </ChamferBox>
   </main>
 </div>
@@ -138,12 +138,6 @@
   main {
     flex: 1;
     padding: clamp(1rem, 3vw, 3rem);
-    /* Deliberately generous, not matched to content: the MultiSelectCombobox
-       swatch is kept at the bottom of this page on purpose (to exercise the
-       "popover extends past the page" case), and its popover needs this much
-       actual scrollable room below the trigger for scrollIntoView to have
-       anywhere to scroll *to* — see handleToggle in MultiSelectCombobox.svelte. */
-    padding-bottom: calc(20rem + 3rem);
     display: flex;
     flex-direction: column;
     gap: clamp(1.25rem, 2.5vw, 2rem);
