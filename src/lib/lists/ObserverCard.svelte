@@ -14,7 +14,7 @@
   import CollapsiblePanel from '../CollapsiblePanel.svelte';
   import MomentSequenceBlock from './MomentSequenceBlock.svelte';
   import DropIndicatorLine from '../dnd/DropIndicatorLine.svelte';
-  import { type DragBoxData } from '../dnd/actions';
+  import { dropBox, type DragBoxData } from '../dnd/actions';
   import { getDragging } from '../dnd/dragState.svelte';
   import { pushUndo } from '../toastQueue.svelte';
   import { moveWithinList, spliceListInto, type Edge } from '../reorder';
@@ -65,6 +65,24 @@
   function addSequence() {
     observer.sequences = [...observer.sequences, { id: generateId(), moments: [] }];
   }
+
+  // storyEvent dropped on the "Add sequence" button -> skip the empty-
+  // sequence intermediate state entirely and create one already containing
+  // a moment for the dragged event. Same undo treatment as
+  // insertEventAsMoment (moment/sequence contents are spec-meaningful).
+  function createSequenceWithEvent(eventId: EventID) {
+    const before = observer.sequences;
+    observer.sequences = [
+      ...before,
+      { id: generateId(), moments: [{ id: generateId(), events: [eventId], direction: 'forward' }] },
+    ];
+    pushUndo('Added sequence', () => {
+      observer.sequences = before;
+    });
+  }
+
+  let isAddSequencePotentialTarget = $derived(getDragging()?.level === 'storyEvent');
+  let addSequenceHovered = $state(false);
 
   function removeSequence(seqId: SequenceID) {
     const index = observer.sequences.findIndex((s) => s.id === seqId);
@@ -331,7 +349,19 @@
         />
       </div>
     {/each}
-    <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />
+    <div
+      class="add-sequence-drop"
+      class:potential-target={isAddSequencePotentialTarget}
+      class:hovered={addSequenceHovered}
+      use:dropBox={{
+        data: () => ({ level: 'sequence', id: observer.id }) as DragBoxData,
+        canDrop: (source) => source.level === 'storyEvent',
+        onDrop: (source) => createSequenceWithEvent(source.id),
+        onHoverChange: (edge) => (addSequenceHovered = edge !== null),
+      }}
+    >
+      <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />
+    </div>
   </div>
 </CollapsiblePanel>
 
@@ -372,5 +402,27 @@
      for the identical pattern one level deeper. */
   .sequence-gap {
     height: 0.75rem;
+  }
+
+  /* Wraps "Add sequence" purely so it can also be a storyEvent drop
+     target — IconButton doesn't support forwarding a `use:` action
+     through its own button (same reason DragHandle is its own component,
+     see its file comment). Outline, not border, so it costs no layout
+     shift when a drag starts; same dashed -> solid accent progression as
+     MomentBox's .moment-body for the same "drop here" meaning one level
+     up (creates a new sequence instead of adding to an existing moment). */
+  .add-sequence-drop {
+    display: inline-flex;
+    outline: var(--border-width) dashed transparent;
+    outline-offset: 2px;
+  }
+
+  .add-sequence-drop.potential-target {
+    outline-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .add-sequence-drop.hovered {
+    outline-style: solid;
+    outline-color: var(--color-accent);
   }
 </style>
