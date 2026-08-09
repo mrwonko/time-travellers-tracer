@@ -22,6 +22,7 @@
   let open = $state(false);
   let filter = $state('');
   let filterInput: HTMLInputElement | undefined = $state();
+  let triggerEl: HTMLButtonElement | undefined = $state();
 
   let filtered = $derived(
     options.filter((o) => o.label.toLowerCase().includes(filter.toLowerCase())),
@@ -50,16 +51,27 @@
   // the native popover; the latter is the actual real-world gesture (e.g.
   // dragging the page to scroll it into view) and needs its own fix —
   // deliberately not chasing that further right now.
+  // Scrolls the trigger away from the viewport's bottom edge before the
+  // popover (which always opens below it, see the TODO in the style
+  // block) renders, so there's room for it instead of it extending past
+  // the bottom of the visible page. `scroll-margin-bottom` on the trigger
+  // (below) tells scrollIntoView how much clearance to leave; the page
+  // itself also needs enough scrollable height below the trigger for
+  // there to be anywhere left to scroll *to* — see the padding-bottom
+  // note on ComponentLibrary's <main>, which is deliberately generous for
+  // this reason.
   function handleToggle(event: ToggleEvent) {
     open = event.newState === 'open';
     if (open) {
       filter = '';
       filterInput?.focus();
+      triggerEl?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
     }
   }
 </script>
 
 <button
+  bind:this={triggerEl}
   popovertarget={popoverId}
   type="button"
   class="field combobox-trigger"
@@ -109,6 +121,11 @@
   .combobox-trigger {
     text-align: left;
     cursor: pointer;
+    /* How much clearance scrollIntoView (see handleToggle) leaves below
+       the trigger — matches the popover's own max-height cap below plus
+       a small gap, so scrolling stops with just enough room for the
+       popover to render without being clipped by the viewport edge. */
+    scroll-margin-bottom: calc(20rem + 1rem);
   }
 
   .placeholder {
@@ -117,18 +134,21 @@
 
   .combobox-popover-host {
     /* TODO: flips above the trigger when there isn't room below is
-       postponed. CSS `position-try: flip-block` (paired with
-       anchor-name/position-anchor above) is the native way to do this,
-       but didn't trigger reliably in testing (Chrome 151) even with the
-       anchor pushed into a viewport far too small to fit below — either
-       an implementation gap in this exact form, or a syntax issue not
-       found yet. For now this always opens below the trigger, capped to
-       a fixed max-height with internal scroll if the option list is
-       long. Revisit with a JS-computed fallback (already proven correct
-       — see git history) if this turns out to matter in practice. This
-       was re-tested after the position:fixed fix above (see ChamferBox
-       split note) in case that was the actual blocker — still didn't
-       trigger reliably, so it stays a TODO. */
+       postponed, and no longer the plan for the "extends past the
+       viewport" problem specifically — that's now handled by scrolling
+       the trigger into view with clearance before opening (see
+       handleToggle + .combobox-trigger's scroll-margin-bottom) rather
+       than by flipping the popover to the other side. CSS `position-try:
+       flip-block` (paired with anchor-name/position-anchor above) is
+       still the native way to do an actual flip if one is wanted later
+       for its own sake, but didn't trigger reliably in testing (Chrome
+       151) even with the anchor pushed into a viewport far too small to
+       fit below — either an implementation gap in this exact form, or a
+       syntax issue not found yet, re-tested after the position:fixed fix
+       above (see ChamferBox split note) in case that was the actual
+       blocker, still no luck. For now this always opens below the
+       trigger, capped to a fixed max-height with internal scroll if the
+       option list is long. */
     position-area: bottom span-right;
     margin: 0;
     /* The browser gives top-layer popovers a default focus outline on
