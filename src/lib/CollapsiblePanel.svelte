@@ -10,6 +10,7 @@
     open = $bindable(true),
     actions,
     children,
+    capHeight = false,
   }: {
     title?: string;
     titleSnippet?: Snippet;
@@ -17,6 +18,7 @@
     open?: boolean;
     actions?: Snippet;
     children: Snippet;
+    capHeight?: boolean;
   } = $props();
 </script>
 
@@ -27,7 +29,7 @@
      applied straight to this literal <details>, via ChamferBox's own
      exported `chamferClass()` helper rather than a second copy of the
      size/bordered → classname mapping. -->
-<details bind:open class="panel {chamferClass()}">
+<details bind:open class="panel {chamferClass()}" class:cap-height={capHeight}>
   <summary class="panel-summary">
     <span class="chevron">
       <Icon name="chevron" size={12} />
@@ -121,5 +123,35 @@
 
   .panel-body {
     margin-top: 1rem;
+  }
+
+  /* Opt-in: lets an outer layout clamp this panel and have the body scroll
+     inside it instead of the page growing. min-height:0 is load-bearing —
+     as a flex/grid item this panel's automatic minimum size is its
+     min-content height, which would otherwise win over the caller's
+     max-height. Off by default so nested panels (e.g. ObserverCard's own
+     sequences panel) keep their natural, unbounded height. */
+  .panel.cap-height {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Chromium (and current Firefox/Safari) wrap non-summary <details>
+     content in a ::details-content box, making .panel-body a grandchild
+     that would never see the clamp above — the panel sizes correctly but
+     its content silently overflows with no scrollbar. This hands scrolling
+     back to .panel-body in every engine; where ::details-content doesn't
+     exist, this rule is simply dropped and .panel-body already is the flex
+     item. */
+  .panel.cap-height::details-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .panel.cap-height > .panel-body {
+    min-height: 0;
+    overflow: auto;
   }
 </style>

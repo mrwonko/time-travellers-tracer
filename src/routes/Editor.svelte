@@ -37,16 +37,16 @@
   </PageHeader>
 
   <main class="layout">
-    <CollapsiblePanel title="Events" count={story.events.length}>
+    <CollapsiblePanel title="Events" count={story.events.length} capHeight>
       <EventList bind:events={story.events} universes={story.universes} />
     </CollapsiblePanel>
 
     <div class="col-side">
-      <CollapsiblePanel title="Universes" count={story.universes.length}>
+      <CollapsiblePanel title="Universes" count={story.universes.length} capHeight>
         <UniverseList bind:universes={story.universes} events={story.events} />
       </CollapsiblePanel>
 
-      <CollapsiblePanel title="Observers" count={story.observers.length}>
+      <CollapsiblePanel title="Observers" count={story.observers.length} capHeight>
         <ObserverList bind:observers={story.observers} events={story.events} />
       </CollapsiblePanel>
     </div>
@@ -103,6 +103,62 @@
   @media (max-width: 1200px) {
     .layout {
       grid-template-columns: 1fr;
+    }
+  }
+
+  /* Above the two-column breakpoint the editor becomes a fixed-height app
+     shell: PageHeader stays a normal-flow, natural-height item, and .layout
+     takes exactly what's left. Nothing here encodes how tall the header
+     is — the browser subtracts it — so this stays correct if the header
+     ever wraps to two rows, gains a toolbar row, or a footer is added as
+     another sibling later. */
+  @media (min-width: 1201px) {
+    .editor {
+      height: 100dvh;
+    }
+
+    /* flex:1 already claims the leftover; min-height:0 is what lets it
+       actually shrink to it. A flexed item inside a *definite*-height flex
+       container itself gets a definite height — that's what makes the
+       percentages below resolve to real numbers instead of being spec-
+       undefined. */
+    .layout {
+      min-height: 0;
+      /* One explicit row spanning the whole (now-definite) grid height, so
+         each column's max-height:100% has a definite grid area to resolve
+         against by spec, rather than an auto track's content-based sizing.
+         align-items:start above is untouched: items still size to their
+         own content inside that tall row — a tall row doesn't stretch a
+         short item. */
+      grid-template-rows: minmax(0, 1fr);
+    }
+
+    .layout > :global(.panel.cap-height) {
+      max-height: 100%;
+    }
+
+    /* Invisible wrapper (no background, no border), so giving it a
+       definite full height costs nothing visually — it's what gives its
+       two panels a definite containing block to be distributed within. */
+    .col-side {
+      height: 100%;
+      min-height: 0;
+    }
+
+    /* Water-filling: flex:1 1 0 alone would hand each open panel exactly
+       half and stretch a short one to fill it; capping each at
+       max-content freezes a panel that doesn't need its half at its
+       natural height, and flexbox's max-violation pass hands the
+       remainder to its sibling. Both tall -> exactly 50/50. One
+       collapsed -> flex:0 0 auto keeps it at summary height and the open
+       one gets everything else. */
+    .col-side > :global(.panel.cap-height) {
+      flex: 1 1 0;
+      max-height: max-content;
+    }
+
+    .col-side > :global(.panel.cap-height:not([open])) {
+      flex: 0 0 auto;
     }
   }
 </style>
