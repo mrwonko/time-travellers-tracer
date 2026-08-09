@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { nativeDragDrop } from './dragDrop';
+import { gotoEditorWithDemoStory } from './seedDemoStory';
 
 // Dragging a whole sequence onto a sibling reorders among the observer's
 // own sequences — presentation-order only (no spec meaning between an
@@ -19,7 +20,7 @@ import { nativeDragDrop } from './dragDrop';
 
 test.describe('sequence reorder', () => {
   test('dropping on a sibling sequence header inserts before it, without an undo toast', async ({ page }) => {
-    await page.goto('/#/editor');
+    await gotoEditorWithDemoStory(page);
     await page.getByRole('heading', { name: 'Observers' }).waitFor();
 
     // .sequence-block elements from *every* observer are always present in
@@ -55,7 +56,7 @@ test.describe('sequence reorder', () => {
   test('dropping on a sibling sequence\'s trailing region inserts after it, without an undo toast', async ({
     page,
   }) => {
-    await page.goto('/#/editor');
+    await gotoEditorWithDemoStory(page);
     await page.getByRole('heading', { name: 'Observers' }).waitFor();
 
     const summary = page.locator('summary').filter({ hasText: 'K. Voss' });

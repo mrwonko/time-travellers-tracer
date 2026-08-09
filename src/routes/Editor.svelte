@@ -1,85 +1,31 @@
 <script lang="ts">
-  import { generateId } from '../lib/id';
   import CollapsiblePanel from '../lib/CollapsiblePanel.svelte';
   import PageHeader from '../lib/PageHeader.svelte';
+  import StoryToolbar from '../lib/StoryToolbar.svelte';
   import UniverseList from '../lib/lists/UniverseList.svelte';
   import EventList from '../lib/lists/EventList.svelte';
   import ObserverList from '../lib/lists/ObserverList.svelte';
-  import type { StoryUniverse, StoryEvent, StoryObserver } from '../lib/types';
-
-  // Seed data only — nothing here persists (spec §11 Phase 1, entry masks
-  // before the storage layer). Small closed-loop example: Voss lives it
-  // forward, the Handler lives the same stretch inverted, and they meet
-  // at the handoff — plus one multi-event moment (the Handler witnesses
-  // the handoff and the depot fire together, as a single simultaneous
-  // moment) to demonstrate that a Moment isn't always exactly one event.
-  // Voss also has a second, unmerged sequence — a moment recorded from a
-  // separate account before it was clear where it falls relative to their
-  // other moments (spec §2/§3) — to demonstrate multi-sequence observers.
-  const primeId = generateId();
-
-  let universes = $state<StoryUniverse[]>([{ id: primeId, label: 'Prime' }]);
-
-  const e1 = generateId();
-  const e2 = generateId();
-  const e3 = generateId();
-
-  let events = $state<StoryEvent[]>([
-    { id: e1, label: 'Signal received at the depot', predecessors: [], universe: primeId },
-    { id: e2, label: 'Handoff at the overpass', predecessors: [e1], universe: primeId },
-    { id: e3, label: 'Depot burns', predecessors: [e2], universe: primeId },
-  ]);
-
-  let observers = $state<StoryObserver[]>([
-    {
-      id: generateId(),
-      name: 'K. Voss',
-      sequences: [
-        {
-          id: generateId(),
-          moments: [
-            { id: generateId(), events: [e1], direction: 'forward' },
-            { id: generateId(), events: [e2], direction: 'forward' },
-            { id: generateId(), events: [e3], direction: 'forward' },
-          ],
-        },
-        {
-          id: generateId(),
-          moments: [{ id: generateId(), events: [e3], direction: 'forward' }],
-        },
-      ],
-    },
-    {
-      id: generateId(),
-      name: 'The Handler',
-      sequences: [
-        {
-          id: generateId(),
-          moments: [
-            { id: generateId(), events: [e3], direction: 'inverted' },
-            { id: generateId(), events: [e2, e1], direction: 'inverted' },
-          ],
-        },
-      ],
-    },
-  ]);
+  import { story } from '../lib/story.svelte';
 </script>
 
 <div class="editor">
-  <PageHeader tag="EDITOR &middot; ENTRY MASKS &middot; NOT PERSISTED" />
+  <PageHeader tag="EDITOR &middot; ENTRY MASKS" />
+  <div class="toolbar-row">
+    <StoryToolbar />
+  </div>
 
   <main class="layout">
-    <CollapsiblePanel title="Events" count={events.length}>
-      <EventList bind:events {universes} />
+    <CollapsiblePanel title="Events" count={story.events.length}>
+      <EventList bind:events={story.events} universes={story.universes} />
     </CollapsiblePanel>
 
     <div class="col-side">
-      <CollapsiblePanel title="Universes" count={universes.length}>
-        <UniverseList bind:universes {events} />
+      <CollapsiblePanel title="Universes" count={story.universes.length}>
+        <UniverseList bind:universes={story.universes} events={story.events} />
       </CollapsiblePanel>
 
-      <CollapsiblePanel title="Observers" count={observers.length}>
-        <ObserverList bind:observers {events} />
+      <CollapsiblePanel title="Observers" count={story.observers.length}>
+        <ObserverList bind:observers={story.observers} events={story.events} />
       </CollapsiblePanel>
     </div>
   </main>
@@ -91,6 +37,12 @@
     min-height: 100svh;
     display: flex;
     flex-direction: column;
+  }
+
+  .toolbar-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.75rem clamp(1rem, 3vw, 3rem) 0;
   }
 
   .layout {

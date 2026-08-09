@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoEditorWithDemoStory } from './seedDemoStory';
 
 // Deliberately minimal — component behavior belongs in Vitest browser
 // tests (src/**/*.browser.test.ts), not here. This just covers what a
@@ -26,7 +27,7 @@ test('all three routes render without console errors', async ({ page }) => {
 });
 
 test('a delete on the editor page produces a visible, globally-mounted toast', async ({ page }) => {
-  await page.goto('/#/editor');
+  await gotoEditorWithDemoStory(page);
   await page.getByRole('heading', { name: 'Events' }).waitFor();
 
   await page.locator('.data-table').nth(0).locator('tbody tr').nth(0).getByLabel('Delete event').click();

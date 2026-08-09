@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { nativeDragDrop } from './dragDrop';
+import { gotoEditorWithDemoStory } from './seedDemoStory';
 
 // Drag-and-drop reorder of moments within a sequence — the first real
 // end-to-end drag behavior. Uses nativeDragDrop (see dragDrop.ts) rather
@@ -12,7 +13,7 @@ import { nativeDragDrop } from './dragDrop';
 // than building fixture state through the UI.
 
 test('dragging a moment past a sibling reorders it, with an undo toast', async ({ page }) => {
-  await page.goto('/#/editor');
+  await gotoEditorWithDemoStory(page);
   await page.getByRole('heading', { name: 'Observers' }).waitFor();
 
   await page.getByText('K. Voss', { exact: false }).first().click();

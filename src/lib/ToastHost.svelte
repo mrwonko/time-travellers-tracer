@@ -13,10 +13,12 @@
   {#each toasts as toast (toast.id)}
     <UndoToast
       message={toast.message}
-      onUndo={() => {
-        toast.onUndo();
-        dismiss(toast.id);
-      }}
+      onUndo={toast.onUndo
+        ? () => {
+            toast.onUndo?.();
+            dismiss(toast.id);
+          }
+        : undefined}
       onDismiss={() => dismiss(toast.id)}
     />
   {/each}
