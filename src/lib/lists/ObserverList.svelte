@@ -10,7 +10,7 @@
   let newName = $state('');
   function addObserver() {
     if (!newName.trim()) return;
-    observers = [...observers, { id: generateId(), name: newName.trim(), sequence: [] }];
+    observers = [...observers, { id: generateId(), name: newName.trim(), sequences: [] }];
     newName = '';
   }
 
