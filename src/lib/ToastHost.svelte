@@ -26,11 +26,11 @@
   .toast-host {
     position: fixed;
     bottom: 1rem;
-    right: 1rem;
+    left: 1rem;
     z-index: var(--z-toast);
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 0.5rem;
     max-width: min(24rem, calc(100vw - 2rem));
   }
