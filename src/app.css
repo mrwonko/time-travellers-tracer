@@ -34,6 +34,9 @@
   --duration-fast: 100ms;
   --ease-standard: ease-out;
 
+  --z-popover: 20;
+  --z-toast: 30;
+
   color-scheme: light;
 }
 
@@ -99,95 +102,86 @@ button {
 }
 
 /* ---------------------------------------------------------------------
-   Shape utility — the chamfered-corner motif (design-language.md §Shape)
+   Shape utility — the chamfered-corner motif (design-language.md §Shape).
+   The `.chamfer*` classes themselves live in ChamferBox.svelte (global
+   styles, colocated with the `chamferClass()` helper that names them),
+   not here — this file only keeps the `--chamfer`/`--chamfer-sm` tokens,
+   since those are shared design tokens like the color/font ones above.
 --------------------------------------------------------------------- */
-.chamfer {
-  clip-path: polygon(
-    var(--chamfer) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    0% 100%,
-    0% var(--chamfer)
-  );
+
+/* ---------------------------------------------------------------------
+   Editor shared UI — form fields and data tables, used identically by
+   src/lib/lists/*.svelte and src/lib/MultiSelectCombobox.svelte. Kept
+   global (not component-scoped) specifically so they stay in sync across
+   those sibling files instead of being copy-pasted into each one.
+--------------------------------------------------------------------- */
+.field {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  border: var(--border-width) solid var(--color-border-strong);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+  width: 100%;
 }
 
-.chamfer-sm {
-  clip-path: polygon(
-    var(--chamfer-sm) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer-sm)),
-    calc(100% - var(--chamfer-sm)) 100%,
-    0% 100%,
-    0% var(--chamfer-sm)
-  );
+.field:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
-/*
- * Bordered variants: clip-path clips a box's `border` along with
- * everything else, so a chamfered corner with a plain `border` has no
- * outline on the diagonal cut — only on the untouched straight edges.
- * These build the border from two stacked, independently-clipped layers
- * instead: an outer "frame" (background = border color) and an inset
- * "fill" (::before, offset by --border-width), so the outline is
- * continuous all the way around, diagonals included.
- */
-.chamfer-bordered,
-.chamfer-sm-bordered {
-  position: relative;
-  isolation: isolate;
-  background: var(--color-border);
+.muted {
+  opacity: 0.4;
 }
 
-.chamfer-bordered {
-  clip-path: polygon(
-    var(--chamfer) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    0% 100%,
-    0% var(--chamfer)
-  );
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.chamfer-sm-bordered {
-  clip-path: polygon(
-    var(--chamfer-sm) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer-sm)),
-    calc(100% - var(--chamfer-sm)) 100%,
-    0% 100%,
-    0% var(--chamfer-sm)
-  );
+.data-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  font-weight: 500;
+  padding: 0.4rem 0.6rem;
+  border-bottom: var(--border-width) solid var(--color-border);
 }
 
-.chamfer-bordered::before,
-.chamfer-sm-bordered::before {
-  content: '';
-  position: absolute;
-  inset: var(--border-width);
-  z-index: -1;
-  background: var(--chamfer-fill, var(--color-panel-bg));
+.data-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: var(--border-width) solid var(--color-border);
+  vertical-align: middle;
 }
 
-.chamfer-bordered::before {
-  clip-path: polygon(
-    var(--chamfer) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    0% 100%,
-    0% var(--chamfer)
-  );
+.data-table tr.add-row td {
+  border-bottom: none;
+  padding-top: 0.75rem;
 }
 
-.chamfer-sm-bordered::before {
-  clip-path: polygon(
-    var(--chamfer-sm) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer-sm)),
-    calc(100% - var(--chamfer-sm)) 100%,
-    0% 100%,
-    0% var(--chamfer-sm)
-  );
+@media (max-width: 720px) {
+  .data-table,
+  .data-table thead,
+  .data-table tbody,
+  .data-table th,
+  .data-table td,
+  .data-table tr {
+    display: block;
+  }
+
+  .data-table thead tr {
+    display: none;
+  }
+
+  .data-table tbody tr:not(.add-row) {
+    border-bottom: var(--border-width) solid var(--color-border);
+    padding: 0.5rem 0;
+  }
+
+  .data-table td {
+    border-bottom: none;
+    padding: 0.2rem 0;
+  }
 }

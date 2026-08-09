@@ -19,15 +19,39 @@ Requires the Node version pinned in `.nvmrc` (current Vite needs Node
 
 ```sh
 npm install
-npm run dev       # dev server with HMR, http://localhost:5173
+npm run dev       # dev server with HMR, http://localhost:8080 — also
+                   # reachable on the LAN (host: true in vite.config.ts),
+                   # e.g. for testing on a phone; see .claude/skills/dev-server
 npm run build     # production build (static output to dist/)
 npm run preview   # serve the production build locally
 npm run check     # type-check: svelte-check + tsc, no separate lint script
 ```
 
-No test suite yet (deliberately deferred — see memory on Playwright
-testing plan: add real tests once there's meaningful editor functionality,
-not for the landing page alone).
+`npm run check` (`svelte-check`) has a parser bug distinct from the real
+Svelte compiler: a `<script>` block whose comment contains the literal
+text `<style>` (e.g. "see the `<style>` block below") can make it
+misreport `` `<script>` was left open ``, cascading into bogus "has no
+default export" errors on every file that imports the affected component
+— even though `npm run build`/`npm run dev` compile it fine. Confirmed by
+bisection 2026-08-09 (see PR #2 review thread on `ChamferBox.svelte`).
+Avoid literal `<script>`/`<style>` substrings inside comments in
+`<script>` blocks; if `npm run check` ever reports a nonsensical
+open/unclosed-tag error, suspect this before assuming the code is wrong —
+cross-check against `npm run build`, which uses the real compiler.
+
+Test suite exists (added once the editor had meaningful functionality to
+test, per the original deferral plan): `npm run test:unit` (Vitest — two
+projects, see `vitest.config.ts`: `*.browser.test.ts` files mount
+individual components in a real Chromium via Vitest browser mode, for
+real click/drag/popover/CSS fidelity without loading the whole
+app/router; plain `*.test.ts` files are Node-side unit tests for pure
+functions like `generateId()`) and `npm run test:e2e` (Playwright, spec
+files in `tests/`, against the real dev server — for full-page behavior a
+component harness can't exercise, e.g. popover dismiss-on-drag, toast
+stacking across the whole page). `npm run test` runs both. Day to day,
+use the narrower `make check` / `make test-unit` / `make test-e2e` /
+`make test` targets (see `Makefile`) instead of the raw `npm`/`npx`
+invocations — allowlistable, no per-invocation approval needed.
 
 Fonts (Space Grotesk, JetBrains Mono) are self-hosted via `@fontsource/*`
 packages, not loaded from Google Fonts or any other CDN — this was an

@@ -53,7 +53,13 @@ Story {                         // the root document — what gets persisted
 
 Event {
   id: EventID                   // UUID
-  label?: string                // optional flavor text, not used by algorithms
+  label?: string                // short display name, used everywhere an
+                                 // event is referenced (predecessor lists,
+                                 // moment displays) — not used by algorithms
+  description?: string          // free text (e.g. local time-of-day, other
+                                 // notes) — not used by algorithms either;
+                                 // separate from `label` since it's not
+                                 // meant to be the short reference name
   predecessors: EventID[]       // "caused by" edges; may form cycles
   universe: UniverseID          // UUID; mandatory — see below and §10
 }
