@@ -16,13 +16,15 @@
   import EventChip from './EventChip.svelte';
   import DragHandle from '../dnd/DragHandle.svelte';
   import { dropBox, type DragBoxData } from '../dnd/actions';
-  import type { Moment, MomentID, SequenceID, EventID } from '../types';
+  import { getDragging } from '../dnd/dragState.svelte';
+  import type { Moment, MomentID, SequenceID, EventID, ObserverID } from '../types';
   import type { Edge } from '../reorder';
 
   let {
     moment,
     index,
     sequenceId,
+    observerId,
     eventOptions,
     eventLabel,
     onSave,
@@ -34,6 +36,7 @@
     moment: Moment;
     index: number;
     sequenceId: SequenceID;
+    observerId: ObserverID;
     eventOptions: { id: string; label: string }[];
     eventLabel: (id: string) => string;
     onSave: (patch: { events: string[]; direction: 'forward' | 'inverted' }) => void;
@@ -50,13 +53,27 @@
   // this box (-> merge-splice at this position). Dragging a moment
   // directly between sequences isn't in scope (only whole-sequence
   // merge-splice is), so a 'moment' source is still same-sequence-only.
+  // A 'sequence' source's containerId carries the observer id (see
+  // MomentSequenceBlock's dragData comment) — required so a sequence
+  // from a *different* observer doesn't look like a valid merge target.
   function canDrop(source: DragBoxData): boolean {
     if (source.level === 'moment') return source.containerId === sequenceId && source.id !== moment.id;
-    if (source.level === 'sequence') return source.id !== sequenceId;
+    if (source.level === 'sequence') return source.id !== sequenceId && source.containerId === observerId;
     return false;
   }
 
   let hoverEdge = $state<Edge | null>(null);
+
+  // Any box that would accept the in-flight drag shows a subtle dashed
+  // outline (see .potential-target below) — not just the one currently
+  // under the pointer — so it's clear up front where a drop is even
+  // possible, rather than only discovering valid targets by hovering
+  // each one in turn. Turns into the brighter hoverEdge indicator above
+  // once this box specifically becomes the insertion point.
+  let isPotentialTarget = $derived.by(() => {
+    const dragging = getDragging();
+    return dragging !== null && canDrop(dragging);
+  });
 
   function handleDrop(source: DragBoxData, edge: Edge) {
     if (source.level === 'moment') {
@@ -89,6 +106,7 @@
   class="moment-drag-box"
   class:drop-top={hoverEdge === 'top'}
   class:drop-bottom={hoverEdge === 'bottom'}
+  class:potential-target={isPotentialTarget && !hoverEdge}
   data-drag-box
   use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange: (edge) => (hoverEdge = edge) }}
 >
@@ -139,25 +157,45 @@
     position: relative;
   }
 
-  .moment-drag-box::before {
+  /* One insertion-line indicator per possible edge (::before = top/
+     before, ::after = bottom/after) — both exist on every box always,
+     invisible (transparent) by default, so no extra markup is needed for
+     the three states below. */
+  .moment-drag-box::before,
+  .moment-drag-box::after {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
-    height: 2px;
-    background: var(--color-accent);
-    opacity: 0;
+    height: 0;
+    border-top: 2px solid transparent;
     pointer-events: none;
   }
 
-  .moment-drag-box.drop-top::before {
+  .moment-drag-box::before {
     top: -0.25rem;
-    opacity: 1;
   }
 
-  .moment-drag-box.drop-bottom::before {
+  .moment-drag-box::after {
     bottom: -0.25rem;
-    opacity: 1;
+  }
+
+  /* Bright, solid: this exact edge is the insertion point under the
+     pointer right now. */
+  .moment-drag-box.drop-top::before,
+  .moment-drag-box.drop-bottom::after {
+    border-top-color: var(--color-accent);
+  }
+
+  /* Subtle dashed: shown at *both* this box's possible insertion points
+     while a compatible drag is in flight and not yet hovering this box
+     specifically — so every place a drop could land is visible up front,
+     not just discoverable by hovering each box in turn. Turns into the
+     single bright line above once this box becomes the actual target. */
+  .moment-drag-box.potential-target::before,
+  .moment-drag-box.potential-target::after {
+    border-top-style: dashed;
+    border-top-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
 
   /* One step further recessed than the sequence block it lives inside

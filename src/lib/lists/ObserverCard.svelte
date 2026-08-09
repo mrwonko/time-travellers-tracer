@@ -203,6 +203,7 @@
     {#each observer.sequences as sequence, i (sequence.id)}
       <MomentSequenceBlock
         {sequence}
+        observerId={observer.id}
         label={sequenceLabels[i].label}
         {eventOptions}
         {eventLabel}

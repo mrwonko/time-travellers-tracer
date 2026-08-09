@@ -15,11 +15,13 @@
   import MomentBox from './MomentBox.svelte';
   import DragHandle from '../dnd/DragHandle.svelte';
   import { dropBox, type DragBoxData } from '../dnd/actions';
-  import type { MomentSequence, Moment, MomentID, SequenceID, EventID } from '../types';
+  import { getDragging } from '../dnd/dragState.svelte';
+  import type { MomentSequence, Moment, MomentID, SequenceID, EventID, ObserverID } from '../types';
   import type { Edge } from '../reorder';
 
   let {
     sequence,
+    observerId,
     label,
     eventOptions,
     eventLabel,
@@ -33,6 +35,7 @@
     onReorderEvents,
   }: {
     sequence: MomentSequence;
+    observerId: ObserverID;
     label: string;
     eventOptions: { id: string; label: string }[];
     eventLabel: (id: string) => string;
@@ -64,22 +67,49 @@
   // - Dropped inside a *different* sequence's moments list (MomentBox's
   //   own canDrop, extended to accept 'sequence' sources, or the
   //   moments-empty fallback below) -> merge-splice via onMergeInto.
-  const dragData: DragBoxData = $derived({ level: 'sequence', id: sequence.id });
+  // containerId carries the *observer* id here (sequences don't have a
+  // container in the moment/event sense) — without it, a sequence from a
+  // different observer would look droppable (sequence ids are globally
+  // unique, so `source.id !== sequence.id` alone can't tell "different
+  // sequence, same observer" from "different observer entirely"). The
+  // actual mergeInto/reorderSequences calls already no-op safely for a
+  // cross-observer id that doesn't exist in *this* observer's own
+  // sequences array, but offering it as a valid-looking drop target would
+  // be misleading now that valid targets are shown explicitly.
+  const dragData: DragBoxData = $derived({ level: 'sequence', id: sequence.id, containerId: observerId });
 
   function canDropSequence(source: DragBoxData): boolean {
-    return source.level === 'sequence' && source.id !== sequence.id;
+    return source.level === 'sequence' && source.id !== sequence.id && source.containerId === observerId;
   }
 
   let hoverEdge = $state<Edge | null>(null);
+
+  // Same "show every valid target, not just the hovered one" affordance
+  // as MomentBox's isPotentialTarget — see its comment.
+  let isPotentialTarget = $derived.by(() => {
+    const dragging = getDragging();
+    return dragging !== null && canDropSequence(dragging);
+  });
 
   function handleSequenceDrop(source: DragBoxData, edge: Edge) {
     onReorderSequences(source.id, sequence.id, edge);
   }
 
+  function canDropEmptyMoments(source: DragBoxData): boolean {
+    return source.level === 'sequence' && source.id !== sequence.id && source.containerId === observerId;
+  }
+
+  let emptyMomentsHovered = $state(false);
+
   function handleEmptyMomentsDrop(source: DragBoxData) {
     if (source.level !== 'sequence') return;
     onMergeInto(source.id, null, null);
   }
+
+  let isEmptyMomentsPotentialTarget = $derived.by(() => {
+    const dragging = getDragging();
+    return dragging !== null && canDropEmptyMoments(dragging);
+  });
 </script>
 
 <ChamferBox size="sm" class="sequence-block">
@@ -87,6 +117,7 @@
     class="sequence-header"
     class:drop-top={hoverEdge === 'top'}
     class:drop-bottom={hoverEdge === 'bottom'}
+    class:potential-target={isPotentialTarget && !hoverEdge}
     data-drag-box
     use:dropBox={{
       data: () => dragData,
@@ -106,10 +137,13 @@
   {#if sequence.moments.length === 0}
     <div
       class="moments-empty"
+      class:potential-target={isEmptyMomentsPotentialTarget}
+      class:hovered={emptyMomentsHovered}
       use:dropBox={{
         data: () => ({ level: 'sequence', id: sequence.id }) as DragBoxData,
-        canDrop: (source) => source.level === 'sequence' && source.id !== sequence.id,
+        canDrop: canDropEmptyMoments,
         onDrop: handleEmptyMomentsDrop,
+        onHoverChange: (edge) => (emptyMomentsHovered = edge !== null),
       }}
     >
       No moments yet — drag another sequence here to merge it in.
@@ -121,6 +155,7 @@
           {moment}
           index={i + 1}
           sequenceId={sequence.id}
+          {observerId}
           {eventOptions}
           {eventLabel}
           onSave={(patch) => onSaveMoment(moment.id, patch)}
@@ -170,28 +205,36 @@
     margin-bottom: 0.6rem;
   }
 
-  /* Same insertion-indicator mechanism as MomentBox's — a live top/bottom
-     bar shown while a sibling sequence is being dragged over this one's
-     header, at the position it'd land at. */
-  .sequence-header::before {
+  /* Same two-edge-line insertion-indicator mechanism as MomentBox's — see
+     its comment. */
+  .sequence-header::before,
+  .sequence-header::after {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
-    height: 2px;
-    background: var(--color-accent);
-    opacity: 0;
+    height: 0;
+    border-top: 2px solid transparent;
     pointer-events: none;
   }
 
-  .sequence-header.drop-top::before {
+  .sequence-header::before {
     top: -0.4rem;
-    opacity: 1;
   }
 
-  .sequence-header.drop-bottom::before {
+  .sequence-header::after {
     bottom: -0.4rem;
-    opacity: 1;
+  }
+
+  .sequence-header.drop-top::before,
+  .sequence-header.drop-bottom::after {
+    border-top-color: var(--color-accent);
+  }
+
+  .sequence-header.potential-target::before,
+  .sequence-header.potential-target::after {
+    border-top-style: dashed;
+    border-top-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
 
   .sequence-label {
@@ -222,6 +265,22 @@
     font-size: 0.8rem;
     opacity: 0.5;
     border: var(--border-width) dashed var(--color-border-strong);
+  }
+
+  /* Same subtle-dashed -> bright transition as the other drop targets,
+     applied to this box's own always-dashed resting state: a valid drag
+     in flight tints the dashed border toward the accent color, and
+     actually hovering it (the only "edge" this target has, since it
+     always appends) goes fully bright — the same signal the top/bottom
+     insertion bars give elsewhere, just as a full border instead of one
+     edge, since there's no moment to attach an edge to. */
+  .moments-empty.potential-target {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .moments-empty.hovered {
+    border-color: var(--color-accent);
   }
 
   .add-moment {

@@ -12,6 +12,7 @@
   import ChamferBox from '../ChamferBox.svelte';
   import DragHandle from '../dnd/DragHandle.svelte';
   import { dropBox, type DragBoxData } from '../dnd/actions';
+  import { getDragging } from '../dnd/dragState.svelte';
   import type { EventID, MomentID } from '../types';
   import type { Edge } from '../reorder';
 
@@ -37,6 +38,13 @@
 
   let hoverEdge = $state<Edge | null>(null);
 
+  // Same "show every valid target, not just the hovered one" affordance
+  // as MomentBox's isPotentialTarget — see its comment.
+  let isPotentialTarget = $derived.by(() => {
+    const dragging = getDragging();
+    return dragging !== null && canDrop(dragging);
+  });
+
   function handleDrop(source: DragBoxData, edge: Edge) {
     onReorder(source.id, eventId, edge);
   }
@@ -46,6 +54,7 @@
   class="event-drag-box"
   class:drop-before={hoverEdge === 'top'}
   class:drop-after={hoverEdge === 'bottom'}
+  class:potential-target={isPotentialTarget && !hoverEdge}
   data-drag-box
   use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange: (edge) => (hoverEdge = edge) }}
 >
@@ -73,25 +82,40 @@
      underlying top='before'/bottom='after' edge data as the other two
      levels (reorder.ts is axis-agnostic), just mapped to the axis this
      level actually scrolls along. */
-  .event-drag-box::before {
+  .event-drag-box::before,
+  .event-drag-box::after {
     content: '';
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 2px;
-    background: var(--color-accent);
-    opacity: 0;
+    width: 0;
+    border-left: 2px solid transparent;
     pointer-events: none;
   }
 
-  .event-drag-box.drop-before::before {
+  .event-drag-box::before {
     left: -0.2rem;
-    opacity: 1;
   }
 
-  .event-drag-box.drop-after::before {
+  .event-drag-box::after {
     right: -0.2rem;
-    opacity: 1;
+  }
+
+  /* Bright, solid: this exact edge is the insertion point under the
+     pointer right now. */
+  .event-drag-box.drop-before::before,
+  .event-drag-box.drop-after::after {
+    border-left-color: var(--color-accent);
+  }
+
+  /* Subtle dashed: shown at *both* this chip's possible insertion points
+     while a compatible drag is in flight and not yet hovering this chip
+     specifically — see MomentBox's .potential-target for the full
+     rationale (same mechanism, this level's axis). */
+  .event-drag-box.potential-target::before,
+  .event-drag-box.potential-target::after {
+    border-left-style: dashed;
+    border-left-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
 
   /* One step further recessed than the moment box it lives inside
