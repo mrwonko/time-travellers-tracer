@@ -15,14 +15,23 @@
 </script>
 
 <script lang="ts">
-  let { name, size = 16 }: { name: IconName; size?: number } = $props();
+  // Default (no ariaLabel): purely decorative, aria-hidden — this is
+  // correct whenever the icon sits inside an already-labeled control
+  // (e.g. IconButton, which labels its own <button> and deliberately
+  // does *not* pass ariaLabel down here — double-labeling both the
+  // button and a nested labeled icon is an accessibility anti-pattern).
+  // ariaLabel is for the other case: an icon used standalone, with no
+  // enclosing labeled control to carry the accessible name instead.
+  let { name, size = 16, ariaLabel }: { name: IconName; size?: number; ariaLabel?: string } = $props();
 </script>
 
 <svg
   viewBox="0 0 16 16"
   width={size}
   height={size}
-  aria-hidden="true"
+  aria-hidden={ariaLabel ? undefined : 'true'}
+  aria-label={ariaLabel}
+  role={ariaLabel ? 'img' : undefined}
   focusable="false"
   stroke="currentColor"
   stroke-width="2"
