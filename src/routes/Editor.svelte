@@ -105,6 +105,17 @@
        make room for the other" behavior entirely. This makes each column
        size to its own content instead. */
     align-items: start;
+    /* .layout is flex:1 inside .editor's min-height:100svh column, so it's
+       often taller than its own (auto-sized) content — e.g. with every
+       panel collapsed. Grid's default align-content (normal, ~= stretch
+       here) would distribute that leftover height across the auto row
+       tracks, growing gaps between rows even though align-items above
+       already pins each *item* to its track's top — invisible with one
+       row (two-column layout: the slack just sits below the content), but
+       very visible once panels stack into separate rows on narrow
+       viewports. Pinning content-sized rows to the top keeps any leftover
+       space below everything instead of wedged between panels. */
+    align-content: start;
   }
 
   .col-side {
