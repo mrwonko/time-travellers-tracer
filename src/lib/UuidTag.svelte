@@ -56,8 +56,14 @@
   }
 
   /* Large screens: always show the ID, hide the toggle — it's noise on a
-     phone, but reads as "technical instrument" on a bigger surface. */
-  @media (min-width: 860px) {
+     phone, but reads as "technical instrument" on a bigger surface. 1440px
+     (not the original 860px) — this component now also nests two levels
+     deeper (sequence/moment headers), and at 860-1280px there isn't
+     enough width left in those narrower boxes for a full UUID to fit on
+     one line, so it was wrapping and eating vertical space instead of
+     reading as a clean inline detail. Confirmed via screenshot: 1280px
+     still wraps, 1440px comfortably fits. */
+  @media (min-width: 1440px) {
     .uuid-toggle {
       display: none;
     }
