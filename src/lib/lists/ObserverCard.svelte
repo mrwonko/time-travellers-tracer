@@ -2,11 +2,12 @@
   // TODO: this row-per-entity edit pattern (own local `editing`/draft
   // state, Save/Cancel via callback props) repeats near-identically
   // across EventRow, UniverseRow, and here/MomentRow. Svelte 5 supports
-  // a generic "editable list" component for this (`<script
-  // generics="T">` + snippet props for per-column render logic), but
-  // that's a real shared-shape design decision, not attempted yet with
-  // only 3 call sites to validate it against — revisit if/when a 4th
-  // consumer shows up. See PR review thread on the old ObserverList.svelte:193.
+  // a generic "editable list" component for this (a script block with a
+  // generics="T" attribute, plus snippet props for per-column render
+  // logic), but that's a real shared-shape design decision, not
+  // attempted yet with only 3 call sites to validate it against —
+  // revisit if/when a 4th consumer shows up. See PR review thread on the
+  // old ObserverList.svelte:193.
   import { generateId } from '../id';
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';

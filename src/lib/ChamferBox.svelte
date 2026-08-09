@@ -19,7 +19,7 @@
   // what — every other component wraps its content in this instead of
   // applying `.chamfer(-sm)(-bordered)` directly, so the border trick's
   // required pairing (position/isolation on the bordered variants, see
-  // the <style> block below) can't be forgotten or clobbered by a
+  // the style block below) can't be forgotten or clobbered by a
   // consumer's own styles the way it was on MultiSelectCombobox's popover.
   let {
     tag = 'div',
