@@ -14,7 +14,7 @@
   import CollapsiblePanel from '../CollapsiblePanel.svelte';
   import MomentSequenceBlock from './MomentSequenceBlock.svelte';
   import { pushUndo } from '../toastQueue.svelte';
-  import { moveWithinList, type Edge } from '../reorder';
+  import { moveWithinList, spliceListInto, type Edge } from '../reorder';
   import type { StoryObserver, StoryEvent, Moment, MomentID, SequenceID } from '../types';
 
   let {
@@ -49,8 +49,10 @@
   }
 
   // Display label per sequence fragment — just its position in the array;
-  // sequences have no meaningful order relative to each other (spec §2),
-  // this is purely "which block on screen" for the merge-target picker.
+  // sequences have no meaningful order relative to each other (spec §2)
+  // and can be freely drag-reordered (reorderSequences below) purely as a
+  // display-order preference, so this label is just "which block on
+  // screen," not an identity.
   let sequenceLabels = $derived(observer.sequences.map((s, i) => ({ id: s.id, label: `Sequence ${i + 1}` })));
   let totalMoments = $derived(observer.sequences.reduce((sum, s) => sum + s.moments.length, 0));
   let momentCountLabel = $derived(
@@ -116,17 +118,28 @@
     });
   }
 
-  // Merge is append-only concatenation (source's moments after target's) —
-  // fine-grained interleaving is an editor-UI nicety left for later (spec
-  // §3). Undo restores the full pre-merge sequences array wholesale rather
-  // than trying to re-split the merged moments back apart.
-  function mergeInto(sourceId: SequenceID, targetId: SequenceID) {
+  // Display order among an observer's own sequences has no spec meaning
+  // (see sequenceLabels above) — dragging one past another is purely a
+  // presentation preference, nothing is lost by a bad drop, so no undo.
+  function reorderSequences(draggedId: SequenceID, targetId: SequenceID, edge: Edge) {
+    observer.sequences = moveWithinList(observer.sequences, draggedId, targetId, edge);
+  }
+
+  // Splices the dragged sequence's moments into the target sequence at the
+  // position implied by targetMomentId/edge (null/null = append, for the
+  // empty-target-sequence drop case), then removes the now-empty source
+  // sequence entirely. Undo restores the full pre-merge sequences array
+  // wholesale rather than trying to re-split the merged moments back apart
+  // — the same "snapshot the whole array" idiom every other undoable edit
+  // here uses, since re-deriving the reverse of an arbitrary splice is
+  // more failure-prone than a full restore.
+  function mergeInto(sourceId: SequenceID, targetId: SequenceID, targetMomentId: MomentID | null, edge: Edge | null) {
     const before = observer.sequences;
     const source = before.find((s) => s.id === sourceId);
     if (!source) return;
     observer.sequences = before
       .filter((s) => s.id !== sourceId)
-      .map((s) => (s.id === targetId ? { ...s, moments: [...s.moments, ...source.moments] } : s));
+      .map((s) => (s.id === targetId ? { ...s, moments: spliceListInto(source.moments, s.moments, targetMomentId, edge) } : s));
     pushUndo('Merged sequences', () => {
       observer.sequences = before;
     });
@@ -165,13 +178,13 @@
         label={sequenceLabels[i].label}
         {eventOptions}
         {eventLabel}
-        mergeTargets={sequenceLabels.filter((t) => t.id !== sequence.id)}
         onAddMoment={(moment) => addMoment(sequence.id, moment)}
         onSaveMoment={(momentId, patch) => saveMoment(sequence.id, momentId, patch)}
         onDeleteMoment={(momentId) => removeMoment(sequence.id, momentId)}
         onDeleteSequence={() => removeSequence(sequence.id)}
-        onMergeInto={(targetId) => mergeInto(sequence.id, targetId)}
+        onMergeInto={(sourceId, targetMomentId, edge) => mergeInto(sourceId, sequence.id, targetMomentId, edge)}
         onReorderMoments={(draggedId, targetId, edge) => reorderMoments(sequence.id, draggedId, targetId, edge)}
+        onReorderSequences={(draggedId, targetId, edge) => reorderSequences(draggedId, targetId, edge)}
       />
     {/each}
     <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />

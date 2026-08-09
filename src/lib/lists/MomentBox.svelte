@@ -28,6 +28,7 @@
     onSave,
     onDelete,
     onReorder,
+    onMergeInto,
   }: {
     moment: Moment;
     index: number;
@@ -37,20 +38,30 @@
     onSave: (patch: { events: string[]; direction: 'forward' | 'inverted' }) => void;
     onDelete: () => void;
     onReorder: (draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) => void;
+    onMergeInto: (sourceSequenceId: SequenceID, targetMomentId: MomentID, edge: Edge) => void;
   } = $props();
 
   const dragData: DragBoxData = $derived({ level: 'moment', id: moment.id, containerId: sequenceId });
 
-  // Same-sequence reorder only — dragging a moment directly between
-  // sequences isn't in scope (only whole-sequence merge-splice is).
+  // Two different sources can land here, told apart by level: a same-
+  // sequence moment (-> reorder) or a whole other sequence dropped onto
+  // this box (-> merge-splice at this position). Dragging a moment
+  // directly between sequences isn't in scope (only whole-sequence
+  // merge-splice is), so a 'moment' source is still same-sequence-only.
   function canDrop(source: DragBoxData): boolean {
-    return source.level === 'moment' && source.containerId === sequenceId && source.id !== moment.id;
+    if (source.level === 'moment') return source.containerId === sequenceId && source.id !== moment.id;
+    if (source.level === 'sequence') return source.id !== sequenceId;
+    return false;
   }
 
   let hoverEdge = $state<Edge | null>(null);
 
   function handleDrop(source: DragBoxData, edge: Edge) {
-    onReorder(source.id, moment.id, edge);
+    if (source.level === 'moment') {
+      onReorder(source.id, moment.id, edge);
+    } else if (source.level === 'sequence') {
+      onMergeInto(source.id, moment.id, edge);
+    }
   }
 
   let editing = $state(false);

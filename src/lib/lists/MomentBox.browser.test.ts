@@ -34,6 +34,7 @@ describe('MomentBox', () => {
         onSave: () => {},
         onDelete: () => {},
         onReorder: () => {},
+        onMergeInto: () => {},
       },
     });
 
@@ -57,6 +58,7 @@ describe('MomentBox', () => {
         onSave: (patch) => (saved = patch),
         onDelete: () => {},
         onReorder: () => {},
+        onMergeInto: () => {},
       },
     });
 
@@ -82,6 +84,7 @@ describe('MomentBox', () => {
         onSave: () => (saveCalled = true),
         onDelete: () => {},
         onReorder: () => {},
+        onMergeInto: () => {},
       },
     });
 
@@ -104,6 +107,7 @@ describe('MomentBox', () => {
         onSave: () => {},
         onDelete: () => (deleted = true),
         onReorder: () => {},
+        onMergeInto: () => {},
       },
     });
 
@@ -122,6 +126,7 @@ describe('MomentBox', () => {
         onSave: () => {},
         onDelete: () => {},
         onReorder: () => {},
+        onMergeInto: () => {},
       },
     });
     const boxB = await render(MomentBox, {
@@ -134,6 +139,7 @@ describe('MomentBox', () => {
         onSave: () => {},
         onDelete: () => {},
         onReorder: () => {},
+        onMergeInto: () => {},
       },
     });
 
@@ -155,6 +161,7 @@ describe('MomentBox', () => {
         onSave: () => {},
         onDelete: () => {},
         onReorder: () => {},
+        onMergeInto: () => {},
       },
     });
 

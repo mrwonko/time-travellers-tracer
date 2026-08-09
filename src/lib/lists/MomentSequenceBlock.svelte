@@ -13,6 +13,8 @@
   import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import ChamferBox from '../ChamferBox.svelte';
   import MomentBox from './MomentBox.svelte';
+  import DragHandle from '../dnd/DragHandle.svelte';
+  import { dropBox, type DragBoxData } from '../dnd/actions';
   import type { MomentSequence, Moment, MomentID, SequenceID } from '../types';
   import type { Edge } from '../reorder';
 
@@ -21,25 +23,25 @@
     label,
     eventOptions,
     eventLabel,
-    mergeTargets,
     onAddMoment,
     onSaveMoment,
     onDeleteMoment,
     onDeleteSequence,
     onMergeInto,
     onReorderMoments,
+    onReorderSequences,
   }: {
     sequence: MomentSequence;
     label: string;
     eventOptions: { id: string; label: string }[];
     eventLabel: (id: string) => string;
-    mergeTargets: { id: SequenceID; label: string }[];
     onAddMoment: (moment: Moment) => void;
     onSaveMoment: (momentId: string, patch: { events: string[]; direction: 'forward' | 'inverted' }) => void;
     onDeleteMoment: (momentId: string) => void;
     onDeleteSequence: () => void;
-    onMergeInto: (targetId: SequenceID) => void;
+    onMergeInto: (sourceSequenceId: SequenceID, targetMomentId: MomentID | null, edge: Edge | null) => void;
     onReorderMoments: (draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) => void;
+    onReorderSequences: (draggedSequenceId: SequenceID, targetSequenceId: SequenceID, edge: Edge) => void;
   } = $props();
 
   // Deliberately just a one-time default, like ObserverCard's own
@@ -52,52 +54,81 @@
     onAddMoment({ id: generateId(), events: newMomentEvents, direction: newMomentDirection });
   }
 
-  let mergeTarget = $state<SequenceID | ''>('');
-  function mergeInto() {
-    if (!mergeTarget) return;
-    onMergeInto(mergeTarget);
-    mergeTarget = '';
+  // Dragging this sequence's handle does one of two things depending on
+  // where it's dropped, not on anything different about the drag itself
+  // (both share this one `level: 'sequence'` payload):
+  // - Dropped on a sibling sequence's header (this block's own dropBox
+  //   below) -> reorder among the observer's own sequences.
+  // - Dropped inside a *different* sequence's moments list (MomentBox's
+  //   own canDrop, extended to accept 'sequence' sources, or the
+  //   moments-empty fallback below) -> merge-splice via onMergeInto.
+  const dragData: DragBoxData = $derived({ level: 'sequence', id: sequence.id });
+
+  function canDropSequence(source: DragBoxData): boolean {
+    return source.level === 'sequence' && source.id !== sequence.id;
+  }
+
+  let hoverEdge = $state<Edge | null>(null);
+
+  function handleSequenceDrop(source: DragBoxData, edge: Edge) {
+    onReorderSequences(source.id, sequence.id, edge);
+  }
+
+  function handleEmptyMomentsDrop(source: DragBoxData) {
+    if (source.level !== 'sequence') return;
+    onMergeInto(source.id, null, null);
   }
 </script>
 
 <ChamferBox size="sm" class="sequence-block">
-  <div class="sequence-header">
+  <div
+    class="sequence-header"
+    class:drop-top={hoverEdge === 'top'}
+    class:drop-bottom={hoverEdge === 'bottom'}
+    data-drag-box
+    use:dropBox={{
+      data: () => dragData,
+      canDrop: canDropSequence,
+      onDrop: handleSequenceDrop,
+      onHoverChange: (edge) => (hoverEdge = edge),
+    }}
+  >
+    <DragHandle label={`Drag "${label}" to reorder, or drop onto another sequence's moments to merge`} data={() => dragData} />
     <span class="sequence-label">{label} <UuidTag id={sequence.id} /></span>
     <span class="moment-count mono">{sequence.moments.length} moment{sequence.moments.length === 1 ? '' : 's'}</span>
     <div class="sequence-actions">
-      {#if mergeTargets.length}
-        <select class="field merge-select" bind:value={mergeTarget} aria-label={`Merge "${label}" into…`}>
-          <option value="">Merge into…</option>
-          {#each mergeTargets as target (target.id)}
-            <option value={target.id}>{target.label}</option>
-          {/each}
-        </select>
-        <IconButton
-          icon="merge"
-          label={`Merge "${label}" into selected sequence`}
-          size="sm"
-          onclick={mergeInto}
-          disabled={!mergeTarget}
-        />
-      {/if}
       <IconButton icon="x" label={`Delete "${label}"`} size="sm" onclick={onDeleteSequence} />
     </div>
   </div>
 
-  <div class="moments">
-    {#each sequence.moments as moment, i (moment.id)}
-      <MomentBox
-        {moment}
-        index={i + 1}
-        sequenceId={sequence.id}
-        {eventOptions}
-        {eventLabel}
-        onSave={(patch) => onSaveMoment(moment.id, patch)}
-        onDelete={() => onDeleteMoment(moment.id)}
-        onReorder={(draggedId, targetId, edge) => onReorderMoments(draggedId, targetId, edge)}
-      />
-    {/each}
-  </div>
+  {#if sequence.moments.length === 0}
+    <div
+      class="moments-empty"
+      use:dropBox={{
+        data: () => ({ level: 'sequence', id: sequence.id }) as DragBoxData,
+        canDrop: (source) => source.level === 'sequence' && source.id !== sequence.id,
+        onDrop: handleEmptyMomentsDrop,
+      }}
+    >
+      No moments yet — drag another sequence here to merge it in.
+    </div>
+  {:else}
+    <div class="moments">
+      {#each sequence.moments as moment, i (moment.id)}
+        <MomentBox
+          {moment}
+          index={i + 1}
+          sequenceId={sequence.id}
+          {eventOptions}
+          {eventLabel}
+          onSave={(patch) => onSaveMoment(moment.id, patch)}
+          onDelete={() => onDeleteMoment(moment.id)}
+          onReorder={(draggedId, targetId, edge) => onReorderMoments(draggedId, targetId, edge)}
+          onMergeInto={(sourceSeqId, targetMomentId, edge) => onMergeInto(sourceSeqId, targetMomentId, edge)}
+        />
+      {/each}
+    </div>
+  {/if}
 
   <div class="add-moment">
     <MultiSelectCombobox options={eventOptions} bind:selected={newMomentEvents} placeholder="Events…" />
@@ -128,11 +159,36 @@
   }
 
   .sequence-header {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     gap: 0.6rem;
     margin-bottom: 0.6rem;
+  }
+
+  /* Same insertion-indicator mechanism as MomentBox's — a live top/bottom
+     bar shown while a sibling sequence is being dragged over this one's
+     header, at the position it'd land at. */
+  .sequence-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-accent);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sequence-header.drop-top::before {
+    top: -0.4rem;
+    opacity: 1;
+  }
+
+  .sequence-header.drop-bottom::before {
+    bottom: -0.4rem;
+    opacity: 1;
   }
 
   .sequence-label {
@@ -151,17 +207,18 @@
     margin-left: auto;
   }
 
-  .merge-select {
-    width: auto;
-    max-width: 11rem;
-    font-size: 0.8rem;
-    padding: 0.3rem 0.4rem;
-  }
-
   .moments {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .moments-empty {
+    padding: 0.75rem;
+    text-align: center;
+    font-size: 0.8rem;
+    opacity: 0.5;
+    border: var(--border-width) dashed var(--color-border-strong);
   }
 
   .add-moment {
