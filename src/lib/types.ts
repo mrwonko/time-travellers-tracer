@@ -5,6 +5,7 @@ export type UniverseID = string;
 export type EventID = string;
 export type ObserverID = string;
 export type MomentID = string;
+export type SequenceID = string;
 
 export interface StoryUniverse {
   id: UniverseID;
@@ -29,10 +30,20 @@ export interface Moment {
   direction: 'forward' | 'inverted';
 }
 
+// A fragment of an observer's personal order. An observer can have more
+// than one — spec §2/§3 — because a moment is often recorded before its
+// position relative to that observer's *other* recorded moments is known.
+// Relative order between an observer's sequences is unknown until merged
+// into one.
+export interface MomentSequence {
+  id: SequenceID;
+  moments: Moment[];
+}
+
 export interface StoryObserver {
   id: ObserverID;
   name: string;
-  sequence: Moment[];
+  sequences: MomentSequence[];
 }
 
 export interface Story {
