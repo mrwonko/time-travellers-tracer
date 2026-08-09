@@ -33,18 +33,25 @@
     pointer-events: none;
   }
 
+  /* border-width is pinned per-side (not just given a value on the one
+     visible side) so that the .hovered/.potential rules below can use the
+     border-style/border-color *shorthands* — which set all four sides —
+     without accidentally drawing a border on the other three sides at
+     the browser's default ~3px width. Only the side with nonzero width
+     ever renders, regardless of what style/color the other three get. */
   .drop-indicator-line::before {
     content: '';
     display: block;
     width: 100%;
-    border-top: 2px solid transparent;
+    border-style: solid;
+    border-color: transparent;
+    border-width: 2px 0 0 0;
   }
 
   .drop-indicator-line.vertical::before {
     width: 0;
     height: 100%;
-    border-top: none;
-    border-left: 2px solid transparent;
+    border-width: 0 0 0 2px;
   }
 
   /* Bright, solid: this is the exact insertion point under the pointer
