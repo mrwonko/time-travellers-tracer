@@ -22,19 +22,16 @@ test.describe('sequence reorder', () => {
     await page.goto('/#/editor');
     await page.getByRole('heading', { name: 'Observers' }).waitFor();
 
-    // .sequence-lead elements from *every* observer are always present in
+    // .sequence-block elements from *every* observer are always present in
     // the DOM (<details> keeps collapsed content mounted, just hidden), and
     // ObserverList's own outer panel is itself a <details> containing every
     // observer's name too — so scope precisely to K. Voss's own <details>
     // (its nearest ancestor from its <summary>), not just any container
-    // whose text happens to include "K. Voss". .sequence-lead (not
-    // .sequence-block) is the per-sequence root — it wraps both the
-    // chamfered card and the .sequence-drop-after trailing region as
-    // siblings, so it's the right scope for either.
+    // whose text happens to include "K. Voss".
     const summary = page.locator('summary').filter({ hasText: 'K. Voss' });
     await summary.click();
     const panel = summary.locator('xpath=ancestor::details[1]');
-    const sequences = panel.locator('.sequence-lead');
+    const sequences = panel.locator('.sequence-block');
     await expect(sequences).toHaveCount(2);
     await expect(sequences.nth(0)).toContainText('3 moments');
     await expect(sequences.nth(1)).toContainText('1 moment');
@@ -64,7 +61,7 @@ test.describe('sequence reorder', () => {
     const summary = page.locator('summary').filter({ hasText: 'K. Voss' });
     await summary.click();
     const panel = summary.locator('xpath=ancestor::details[1]');
-    const sequences = panel.locator('.sequence-lead');
+    const sequences = panel.locator('.sequence-block');
     await expect(sequences).toHaveCount(2);
     await expect(sequences.nth(0)).toContainText('3 moments');
     await expect(sequences.nth(1)).toContainText('1 moment');

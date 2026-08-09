@@ -9,10 +9,15 @@
   // set) — reordering here is purely visual consistency with the other
   // two levels, which is also why it gets no undo toast (see
   // ObserverCard.svelte's reorderEvents).
+  //
+  // Like MomentBox, this chip is its own drag source and drop target
+  // (unchanged, still the real hit-region), but doesn't render its own
+  // insertion-line indicator — that's a single shared element per gap,
+  // owned by MomentBox, driven by both neighbors' hover state. See
+  // DropIndicatorLine.svelte and MomentBox's isEventGapHovered.
   import ChamferBox from '../ChamferBox.svelte';
   import DragHandle from '../dnd/DragHandle.svelte';
   import { dropBox, type DragBoxData } from '../dnd/actions';
-  import { getDragging } from '../dnd/dragState.svelte';
   import type { EventID, MomentID } from '../types';
   import type { Edge } from '../reorder';
 
@@ -21,11 +26,13 @@
     momentId,
     label,
     onReorder,
+    onHoverChange,
   }: {
     eventId: EventID;
     momentId: MomentID;
     label: string;
     onReorder: (draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
+    onHoverChange: (edge: Edge | null) => void;
   } = $props();
 
   const dragData: DragBoxData = $derived({ level: 'event', id: eventId, containerId: momentId });
@@ -36,15 +43,6 @@
     return source.level === 'event' && source.containerId === momentId && source.id !== eventId;
   }
 
-  let hoverEdge = $state<Edge | null>(null);
-
-  // Same "show every valid target, not just the hovered one" affordance
-  // as MomentBox's isPotentialTarget — see its comment.
-  let isPotentialTarget = $derived.by(() => {
-    const dragging = getDragging();
-    return dragging !== null && canDrop(dragging);
-  });
-
   function handleDrop(source: DragBoxData, edge: Edge) {
     onReorder(source.id, eventId, edge);
   }
@@ -52,12 +50,8 @@
 
 <div
   class="event-drag-box"
-  class:drop-before={hoverEdge === 'top'}
-  class:drop-after={hoverEdge === 'bottom'}
-  class:potential-before={isPotentialTarget && hoverEdge !== 'top'}
-  class:potential-after={isPotentialTarget && hoverEdge !== 'bottom'}
   data-drag-box
-  use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange: (edge) => (hoverEdge = edge) }}
+  use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange }}
 >
   <DragHandle label="Drag to reorder event" data={() => dragData} />
   <ChamferBox tag="span" size="sm" class="event-chip">
@@ -71,57 +65,9 @@
      boundary onto ChamferBox itself). inline-flex, not block, so these
      still flow left-to-right and wrap within .moment-events' row. */
   .event-drag-box {
-    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 0.1rem;
-  }
-
-  /* Events flow in a horizontal row (unlike the vertical moment/sequence
-     lists), so the insertion indicator is a vertical bar to its
-     left/right rather than a horizontal one above/below — same
-     underlying top='before'/bottom='after' edge data as the other two
-     levels (reorder.ts is axis-agnostic), just mapped to the axis this
-     level actually scrolls along. */
-  .event-drag-box::before,
-  .event-drag-box::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 0;
-    border-left: 2px solid transparent;
-    pointer-events: none;
-  }
-
-  .event-drag-box::before {
-    left: -0.2rem;
-  }
-
-  .event-drag-box::after {
-    right: -0.2rem;
-  }
-
-  /* Bright, solid: this exact edge is the insertion point under the
-     pointer right now. */
-  .event-drag-box.drop-before::before,
-  .event-drag-box.drop-after::after {
-    border-left-color: var(--color-accent);
-  }
-
-  /* Subtle dashed: shown at each of this chip's possible insertion points
-     independently while a compatible drag is in flight — see MomentBox's
-     .potential-top/.potential-bottom for the full rationale (same
-     mechanism, this level's axis: hovering one edge must not blank out
-     the other edge's still-valid hint). */
-  .event-drag-box.potential-before::before {
-    border-left-style: dashed;
-    border-left-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  }
-
-  .event-drag-box.potential-after::after {
-    border-left-style: dashed;
-    border-left-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
 
   /* One step further recessed than the moment box it lives inside

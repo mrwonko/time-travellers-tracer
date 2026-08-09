@@ -13,7 +13,7 @@ import EventChip from './EventChip.svelte';
 describe('EventChip', () => {
   test('renders the label inside a chip', async () => {
     const { container } = await render(EventChip, {
-      props: { eventId: 'e1', momentId: 'm1', label: 'Signal received at the depot', onReorder: () => {} },
+      props: { eventId: 'e1', momentId: 'm1', label: 'Signal received at the depot', onReorder: () => {}, onHoverChange: () => {} },
     });
 
     const chip = container.querySelector('.event-chip');
@@ -23,7 +23,7 @@ describe('EventChip', () => {
 
   test('exposes a drag handle and a data-drag-box root for drag-and-drop', async () => {
     const { container } = await render(EventChip, {
-      props: { eventId: 'e1', momentId: 'm1', label: 'Signal received at the depot', onReorder: () => {} },
+      props: { eventId: 'e1', momentId: 'm1', label: 'Signal received at the depot', onReorder: () => {}, onHoverChange: () => {} },
     });
 
     expect(container.querySelector('[data-drag-box]')).not.toBeNull();

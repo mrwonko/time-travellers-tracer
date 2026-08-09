@@ -7,6 +7,19 @@
   // edited simultaneously without one edit stomping another's in-progress
   // draft — carried over unchanged from the table-row version this
   // replaces.
+  //
+  // This box is a drag source and drop target for *itself* (its own
+  // top/bottom halves stay the large, real hit-regions — unchanged), but
+  // no longer renders its own insertion-line indicator: that's a single
+  // shared element per gap, owned by the parent (MomentSequenceBlock),
+  // driven by both neighbors' hover state, so a gap touched by two
+  // adjacent moments never draws two independently-positioned lines a
+  // few pixels apart — see DropIndicatorLine.svelte and
+  // MomentSequenceBlock's isGapHovered for the full mechanism. This box
+  // just forwards its own raw hover edge upward via onHoverChange
+  // instead of rendering anything itself. Its own events list applies
+  // the identical pattern one level deeper, with this component as the
+  // "parent" for EventChip's gaps.
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';
   import DirectionToggle from '../DirectionToggle.svelte';
@@ -15,6 +28,7 @@
   import ChamferBox from '../ChamferBox.svelte';
   import EventChip from './EventChip.svelte';
   import DragHandle from '../dnd/DragHandle.svelte';
+  import DropIndicatorLine from '../dnd/DropIndicatorLine.svelte';
   import { dropBox, type DragBoxData } from '../dnd/actions';
   import { getDragging } from '../dnd/dragState.svelte';
   import type { Moment, MomentID, SequenceID, EventID, ObserverID } from '../types';
@@ -32,6 +46,7 @@
     onReorder,
     onMergeInto,
     onReorderEvents,
+    onHoverChange,
   }: {
     moment: Moment;
     index: number;
@@ -44,6 +59,7 @@
     onReorder: (draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) => void;
     onMergeInto: (sourceSequenceId: SequenceID, targetMomentId: MomentID, edge: Edge) => void;
     onReorderEvents: (draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
+    onHoverChange: (edge: Edge | null) => void;
   } = $props();
 
   const dragData: DragBoxData = $derived({ level: 'moment', id: moment.id, containerId: sequenceId });
@@ -61,19 +77,6 @@
     if (source.level === 'sequence') return source.id !== sequenceId && source.containerId === observerId;
     return false;
   }
-
-  let hoverEdge = $state<Edge | null>(null);
-
-  // Any box that would accept the in-flight drag shows a subtle dashed
-  // outline (see .potential-target below) — not just the one currently
-  // under the pointer — so it's clear up front where a drop is even
-  // possible, rather than only discovering valid targets by hovering
-  // each one in turn. Turns into the brighter hoverEdge indicator above
-  // once this box specifically becomes the insertion point.
-  let isPotentialTarget = $derived.by(() => {
-    const dragging = getDragging();
-    return dragging !== null && canDrop(dragging);
-  });
 
   function handleDrop(source: DragBoxData, edge: Edge) {
     if (source.level === 'moment') {
@@ -100,16 +103,44 @@
   function cancel() {
     editing = false;
   }
+
+  // This box's own events list — same shared-gap-indicator pattern as
+  // MomentSequenceBlock's moments list, one level deeper. No self-
+  // exclusion in canDropOnEvents (unlike EventChip's own per-chip
+  // canDrop, used for its actual hit target) since a gap isn't tied to
+  // one specific chip's identity — reorderEvents' own no-op guard
+  // already makes a drop-on-current-position harmless.
+  function canDropOnEvents(source: DragBoxData): boolean {
+    return source.level === 'event' && source.containerId === moment.id;
+  }
+
+  let isEventsPotentialTarget = $derived.by(() => {
+    const dragging = getDragging();
+    return dragging !== null && canDropOnEvents(dragging);
+  });
+
+  let hoveredEvent = $state<{ id: EventID; edge: Edge } | null>(null);
+
+  function updateEventHover(eventId: EventID, edge: Edge | null) {
+    if (edge !== null) {
+      hoveredEvent = { id: eventId, edge };
+    } else if (hoveredEvent?.id === eventId) {
+      hoveredEvent = null;
+    }
+  }
+
+  function isEventGapHovered(beforeId: EventID | null, afterId: EventID | null): boolean {
+    if (!hoveredEvent) return false;
+    if (afterId !== null && hoveredEvent.id === afterId && hoveredEvent.edge === 'top') return true;
+    if (beforeId !== null && hoveredEvent.id === beforeId && hoveredEvent.edge === 'bottom') return true;
+    return false;
+  }
 </script>
 
 <div
   class="moment-drag-box"
-  class:drop-top={hoverEdge === 'top'}
-  class:drop-bottom={hoverEdge === 'bottom'}
-  class:potential-top={isPotentialTarget && hoverEdge !== 'top'}
-  class:potential-bottom={isPotentialTarget && hoverEdge !== 'bottom'}
   data-drag-box
-  use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange: (edge) => (hoverEdge = edge) }}
+  use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange }}
 >
   <ChamferBox size="sm" class="moment-box">
     <div class="moment-header">
@@ -135,13 +166,28 @@
         <DirectionToggle bind:direction={editDirection} />
       {:else}
         <div class="moment-events">
-          {#each moment.events as eventId (eventId)}
+          <div class="event-gap">
+            <DropIndicatorLine
+              orientation="vertical"
+              potential={isEventsPotentialTarget}
+              hovered={isEventGapHovered(null, moment.events[0] ?? null)}
+            />
+          </div>
+          {#each moment.events as eventId, i (eventId)}
             <EventChip
               {eventId}
               momentId={moment.id}
               label={eventLabel(eventId)}
               onReorder={(draggedId, targetId, edge) => onReorderEvents(draggedId, targetId, edge)}
+              onHoverChange={(edge) => updateEventHover(eventId, edge)}
             />
+            <div class="event-gap">
+              <DropIndicatorLine
+                orientation="vertical"
+                potential={isEventsPotentialTarget}
+                hovered={isEventGapHovered(eventId, moment.events[i + 1] ?? null)}
+              />
+            </div>
           {/each}
         </div>
       {/if}
@@ -154,57 +200,11 @@
      element to attach to (data-drag-box / the dropBox action) — use:
      directives only apply to elements written directly in a template,
      not through a component boundary, so this can't live on ChamferBox
-     itself. No layout effect of its own (no padding/margin), just the
-     insertion-indicator bar drawn in the gap above/below on hover. */
+     itself. No layout effect of its own (no padding/margin) — the
+     insertion-indicator itself lives one level up now (see the big
+     comment at the top of this file). */
   .moment-drag-box {
     position: relative;
-  }
-
-  /* One insertion-line indicator per possible edge (::before = top/
-     before, ::after = bottom/after) — both exist on every box always,
-     invisible (transparent) by default, so no extra markup is needed for
-     the three states below. */
-  .moment-drag-box::before,
-  .moment-drag-box::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 0;
-    border-top: 2px solid transparent;
-    pointer-events: none;
-  }
-
-  .moment-drag-box::before {
-    top: -0.25rem;
-  }
-
-  .moment-drag-box::after {
-    bottom: -0.25rem;
-  }
-
-  /* Bright, solid: this exact edge is the insertion point under the
-     pointer right now. */
-  .moment-drag-box.drop-top::before,
-  .moment-drag-box.drop-bottom::after {
-    border-top-color: var(--color-accent);
-  }
-
-  /* Subtle dashed: shown at each of this box's possible insertion points
-     independently while a compatible drag is in flight — so every place a
-     drop could land is visible up front, not just discoverable by
-     hovering each box in turn. Each edge only stops being dashed (and
-     turns into the single bright line above) once *that specific* edge
-     becomes the live hover target — hovering one edge must not blank out
-     the other edge's hint, it's still a valid drop spot. */
-  .moment-drag-box.potential-top::before {
-    border-top-style: dashed;
-    border-top-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  }
-
-  .moment-drag-box.potential-bottom::after {
-    border-top-style: dashed;
-    border-top-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
 
   /* One step further recessed than the sequence block it lives inside
@@ -248,7 +248,15 @@
 
   .moment-events {
     display: flex;
-    gap: 0.35rem;
+    align-items: center;
     flex-wrap: wrap;
+  }
+
+  /* Fixed-size regardless of potential/hovered state (no layout shift
+     when a drag starts — matches the editor's near-zero-motion
+     principle), same width as the old flex `gap` it replaces. */
+  .event-gap {
+    width: 0.35rem;
+    align-self: stretch;
   }
 </style>

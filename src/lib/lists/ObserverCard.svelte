@@ -13,6 +13,9 @@
   import UuidTag from '../UuidTag.svelte';
   import CollapsiblePanel from '../CollapsiblePanel.svelte';
   import MomentSequenceBlock from './MomentSequenceBlock.svelte';
+  import DropIndicatorLine from '../dnd/DropIndicatorLine.svelte';
+  import { type DragBoxData } from '../dnd/actions';
+  import { getDragging } from '../dnd/dragState.svelte';
   import { pushUndo } from '../toastQueue.svelte';
   import { moveWithinList, spliceListInto, type Edge } from '../reorder';
   import type { StoryObserver, StoryEvent, Moment, MomentID, SequenceID, EventID } from '../types';
@@ -153,6 +156,39 @@
     );
   }
 
+  // The observer's own sequences list — same shared-gap-indicator pattern
+  // as MomentSequenceBlock's moments list, one level up. No self-
+  // exclusion in canDropOnSequences (unlike MomentSequenceBlock's own
+  // canDropSequence, used for its actual header/trailing hit targets)
+  // since a gap isn't tied to one specific sequence's identity —
+  // reorderSequences' own no-op guard already makes a drop-on-current-
+  // position harmless.
+  function canDropOnSequences(source: DragBoxData): boolean {
+    return source.level === 'sequence' && source.containerId === observer.id;
+  }
+
+  let isSequencesPotentialTarget = $derived.by(() => {
+    const dragging = getDragging();
+    return dragging !== null && canDropOnSequences(dragging);
+  });
+
+  let hoveredSequence = $state<{ id: SequenceID; edge: Edge } | null>(null);
+
+  function updateSequenceHover(seqId: SequenceID, edge: Edge | null) {
+    if (edge !== null) {
+      hoveredSequence = { id: seqId, edge };
+    } else if (hoveredSequence?.id === seqId) {
+      hoveredSequence = null;
+    }
+  }
+
+  function isSequenceGapHovered(beforeId: SequenceID | null, afterId: SequenceID | null): boolean {
+    if (!hoveredSequence) return false;
+    if (afterId !== null && hoveredSequence.id === afterId && hoveredSequence.edge === 'top') return true;
+    if (beforeId !== null && hoveredSequence.id === beforeId && hoveredSequence.edge === 'bottom') return true;
+    return false;
+  }
+
   // Splices the dragged sequence's moments into the target sequence at the
   // position implied by targetMomentId/edge (null/null = append, for the
   // empty-target-sequence drop case), then removes the now-empty source
@@ -200,6 +236,12 @@
   {/snippet}
 
   <div class="sequences">
+    <div class="sequence-gap">
+      <DropIndicatorLine
+        potential={isSequencesPotentialTarget}
+        hovered={isSequenceGapHovered(null, observer.sequences[0]?.id ?? null)}
+      />
+    </div>
     {#each observer.sequences as sequence, i (sequence.id)}
       <MomentSequenceBlock
         {sequence}
@@ -216,7 +258,14 @@
         onReorderSequences={(draggedId, targetId, edge) => reorderSequences(draggedId, targetId, edge)}
         onReorderEvents={(momentId, draggedId, targetId, edge) =>
           reorderEvents(sequence.id, momentId, draggedId, targetId, edge)}
+        onHoverChange={(edge) => updateSequenceHover(sequence.id, edge)}
       />
+      <div class="sequence-gap">
+        <DropIndicatorLine
+          potential={isSequencesPotentialTarget}
+          hovered={isSequenceGapHovered(sequence.id, observer.sequences[i + 1]?.id ?? null)}
+        />
+      </div>
     {/each}
     <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />
   </div>
@@ -240,7 +289,6 @@
   .sequences {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
     /* Bleed out to the edge of the observer's own outer panel (canceling
        its padding, not this component's own — see the --panel-padding
        comment in CollapsiblePanel.svelte) so a sequence fragment's width
@@ -252,5 +300,13 @@
        can't compress further — but don't force a min-width, or every
        narrow column scrolls even when the content would actually fit. */
     overflow-x: auto;
+  }
+
+  /* Fixed-size regardless of potential/hovered state (no layout shift
+     when a drag starts), same height as the old flex `gap` it replaces —
+     see DropIndicatorLine.svelte / MomentSequenceBlock's own .moment-gap
+     for the identical pattern one level deeper. */
+  .sequence-gap {
+    height: 0.75rem;
   }
 </style>

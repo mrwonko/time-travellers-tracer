@@ -36,6 +36,7 @@ describe('MomentBox', () => {
         onDelete: () => {},
         onReorder: () => {},
         onMergeInto: () => {},
+        onHoverChange: () => {},
         onReorderEvents: () => {},
       },
     });
@@ -62,6 +63,7 @@ describe('MomentBox', () => {
         onDelete: () => {},
         onReorder: () => {},
         onMergeInto: () => {},
+        onHoverChange: () => {},
         onReorderEvents: () => {},
       },
     });
@@ -90,6 +92,7 @@ describe('MomentBox', () => {
         onDelete: () => {},
         onReorder: () => {},
         onMergeInto: () => {},
+        onHoverChange: () => {},
         onReorderEvents: () => {},
       },
     });
@@ -115,6 +118,7 @@ describe('MomentBox', () => {
         onDelete: () => (deleted = true),
         onReorder: () => {},
         onMergeInto: () => {},
+        onHoverChange: () => {},
         onReorderEvents: () => {},
       },
     });
@@ -136,6 +140,7 @@ describe('MomentBox', () => {
         onDelete: () => {},
         onReorder: () => {},
         onMergeInto: () => {},
+        onHoverChange: () => {},
         onReorderEvents: () => {},
       },
     });
@@ -151,6 +156,7 @@ describe('MomentBox', () => {
         onDelete: () => {},
         onReorder: () => {},
         onMergeInto: () => {},
+        onHoverChange: () => {},
         onReorderEvents: () => {},
       },
     });
@@ -175,6 +181,7 @@ describe('MomentBox', () => {
         onDelete: () => {},
         onReorder: () => {},
         onMergeInto: () => {},
+        onHoverChange: () => {},
         onReorderEvents: () => {},
       },
     });
