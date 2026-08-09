@@ -20,6 +20,12 @@
   // instead of rendering anything itself. Its own events list applies
   // the identical pattern one level deeper, with this component as the
   // "parent" for EventChip's gaps.
+  //
+  // .moment-body is additionally its own drop target for a storyEvent
+  // drag (adds the event to this moment) — .moment-header is deliberately
+  // *not* one: inserting a brand-new moment is handled entirely by
+  // MomentSequenceBlock's own moment-gap divs now (see that file's
+  // comment for why), not proxied through this box.
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';
   import DirectionToggle from '../DirectionToggle.svelte';
@@ -47,7 +53,6 @@
     onMergeInto,
     onReorderEvents,
     onHoverChange,
-    onInsertEventBefore,
     onAddEvent,
   }: {
     moment: Moment;
@@ -62,12 +67,11 @@
     onMergeInto: (sourceSequenceId: SequenceID, targetMomentId: MomentID, edge: Edge) => void;
     onReorderEvents: (draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
     onHoverChange: (edge: Edge | null) => void;
-    // storyEvent dropped on this moment's header -> insert a new moment
-    // right before this one; dropped on its body -> add the event to this
-    // moment. Two separate sibling drop targets rather than one nested
-    // inside the other — see the top-of-file comment and canDropStoryEvent
-    // below for why nesting doesn't work with Pragmatic DnD here.
-    onInsertEventBefore: (eventId: EventID) => void;
+    // storyEvent dropped on this moment's body -> add the event to this
+    // moment (inserting a *new* moment, by contrast, is handled by
+    // MomentSequenceBlock's own moment-gap divs, not by this box — see its
+    // comment for why a gap needs to be its own drop target rather than
+    // proxied through a neighboring box's header).
     onAddEvent: (eventId: EventID) => void;
   } = $props();
 
@@ -95,24 +99,19 @@
     }
   }
 
-  // .moment-header and .moment-body are their own sibling drop targets for
-  // a storyEvent drag (not nested inside .moment-drag-box's own target
-  // above): Pragmatic DnD's hit-testing walks the whole ancestor chain and
-  // fires onDrop on every target whose canDrop returned true, so a nested
-  // target accepting the same source level as its parent would double-fire
-  // (both "insert a new moment" and "add to this moment" on the same
-  // drop). Keeping them plain siblings — the same rule this file's parent,
-  // MomentSequenceBlock, already documents for its own header/trailing
-  // regions — means at most one of them ever accepts a given drag.
-  function canDropStoryEvent(source: DragBoxData): boolean {
-    return source.level === 'storyEvent';
-  }
-
-  // While editing, editEvents is an in-progress draft that save() writes
-  // back to moment.events wholesale — a drop landing directly in
-  // moment.events during that window would be silently discarded on save.
+  // .moment-body is its own sibling drop target for a storyEvent drag (not
+  // nested inside .moment-drag-box's own target above): Pragmatic DnD's
+  // hit-testing walks the whole ancestor chain and fires onDrop on every
+  // target whose canDrop returned true, so a nested target accepting the
+  // same source level as its parent would double-fire. Keeping it a plain
+  // sibling — the same rule MomentSequenceBlock documents for its own
+  // header/trailing regions — means at most one target ever accepts a
+  // given drag. While editing, editEvents is an in-progress draft that
+  // save() writes back to moment.events wholesale — a drop landing
+  // directly in moment.events during that window would be silently
+  // discarded on save.
   function canDropIntoBody(source: DragBoxData): boolean {
-    return !editing && canDropStoryEvent(source);
+    return !editing && source.level === 'storyEvent';
   }
 
   let bodyHovered = $state(false);
@@ -188,15 +187,7 @@
   use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange }}
 >
   <ChamferBox size="sm" class="moment-box">
-    <div
-      class="moment-header"
-      use:dropBox={{
-        data: () => dragData,
-        canDrop: canDropStoryEvent,
-        onDrop: (source) => onInsertEventBefore(source.id),
-        onHoverChange: (edge) => onHoverChange(edge !== null ? 'top' : null),
-      }}
-    >
+    <div class="moment-header">
       <DragHandle label="Drag to reorder moment" data={() => dragData} />
       <span class="moment-index mono">#{index}</span>
       {#if !editing}

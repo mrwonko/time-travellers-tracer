@@ -38,7 +38,6 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
-        onInsertEventBefore: () => {},
         onAddEvent: () => {},
       },
     });
@@ -67,7 +66,6 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
-        onInsertEventBefore: () => {},
         onAddEvent: () => {},
       },
     });
@@ -98,7 +96,6 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
-        onInsertEventBefore: () => {},
         onAddEvent: () => {},
       },
     });
@@ -126,7 +123,6 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
-        onInsertEventBefore: () => {},
         onAddEvent: () => {},
       },
     });
@@ -150,7 +146,6 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
-        onInsertEventBefore: () => {},
         onAddEvent: () => {},
       },
     });
@@ -168,7 +163,6 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
-        onInsertEventBefore: () => {},
         onAddEvent: () => {},
       },
     });
@@ -195,7 +189,6 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
-        onInsertEventBefore: () => {},
         onAddEvent: () => {},
       },
     });
