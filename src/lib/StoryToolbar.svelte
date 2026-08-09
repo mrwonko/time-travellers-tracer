@@ -60,8 +60,8 @@
 </script>
 
 <div class="story-toolbar">
-  <IconButton icon="download" label="Export story as JSON" size="sm" onclick={exportStory} />
-  <IconButton icon="upload" label="Import story from JSON" size="sm" onclick={triggerImport} />
+  <IconButton icon="upload" label="Export story as JSON" size="sm" onclick={exportStory} />
+  <IconButton icon="download" label="Import story from JSON" size="sm" onclick={triggerImport} />
   <input
     bind:this={fileInput}
     type="file"

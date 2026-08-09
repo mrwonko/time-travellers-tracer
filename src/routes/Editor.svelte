@@ -9,10 +9,9 @@
 </script>
 
 <div class="editor">
-  <PageHeader tag="EDITOR &middot; ENTRY MASKS" />
-  <div class="toolbar-row">
+  <PageHeader tag="EDITOR &middot; ENTRY MASKS">
     <StoryToolbar />
-  </div>
+  </PageHeader>
 
   <main class="layout">
     <CollapsiblePanel title="Events" count={story.events.length}>
@@ -37,12 +36,6 @@
     min-height: 100svh;
     display: flex;
     flex-direction: column;
-  }
-
-  .toolbar-row {
-    display: flex;
-    justify-content: flex-end;
-    padding: 0.75rem clamp(1rem, 3vw, 3rem) 0;
   }
 
   .layout {
