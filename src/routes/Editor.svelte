@@ -113,7 +113,15 @@
     gap: inherit;
   }
 
-  @media (max-width: 720px) {
+  /* The right column (Universes/Observers) carries data-tables with a UUID
+     column and multiple action buttons per row — content that doesn't
+     compress much further before it clips (verified by survey: still
+     clipping as late as ~1150px, clean by 1200px). Rather than chase the
+     exact narrow pixel where it stops clipping — fragile, since real data
+     (longer names, more visible UUIDs) shifts that threshold — the
+     two-column layout is reserved for genuinely wide viewports; anything
+     narrower stacks single-column, same as the phone-width case below. */
+  @media (max-width: 1200px) {
     .layout {
       grid-template-columns: 1fr;
     }
