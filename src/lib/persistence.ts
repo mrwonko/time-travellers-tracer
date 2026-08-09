@@ -3,6 +3,7 @@
 // serialize/parse/migrate logic only — no localStorage access here, so this
 // is plain-Node testable like id.ts; see story.svelte.ts for the reactive
 // store that actually reads/writes localStorage using these functions.
+import { generateId } from './id';
 import type { Story } from './types';
 
 export const CURRENT_SCHEMA_VERSION = 1;
@@ -18,8 +19,14 @@ export interface StoredDocument {
   story: Story;
 }
 
+// `Event.universe` is mandatory (spec §3) — a story with zero universes has
+// nowhere valid for a first event to point, so a blank/fresh story starts
+// with one nameless universe rather than an empty list. UniverseList.svelte
+// refuses to delete the last remaining universe for the same reason, so
+// this invariant ("at least one universe always exists") holds from here
+// on, not just at creation.
 export function emptyStory(): Story {
-  return { events: [], observers: [], universes: [] };
+  return { events: [], observers: [], universes: [{ id: generateId(), label: undefined }] };
 }
 
 export function serializeStory(story: Story): string {

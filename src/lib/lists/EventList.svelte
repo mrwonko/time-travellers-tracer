@@ -16,7 +16,12 @@
   let newUniverse = $state(universes[0]?.id ?? '');
   let newPredecessors = $state<string[]>([]);
   function add() {
-    if (!newLabel.trim()) return;
+    // universe is mandatory on every Event (spec §3) — newUniverse is only
+    // ever empty if `universes` itself is empty, which UniverseList.svelte
+    // now refuses to allow (it always keeps at least one), but this stays
+    // as the actual enforcement point rather than trusting that invariant
+    // silently.
+    if (!newLabel.trim() || !newUniverse) return;
     events = [
       ...events,
       {
@@ -110,7 +115,7 @@
         />
       </td>
       <td class="actions">
-        <IconButton icon="plus" label="Add event" variant="accent" onclick={add} disabled={!newLabel.trim()} />
+        <IconButton icon="plus" label="Add event" variant="accent" onclick={add} disabled={!newLabel.trim() || !newUniverse} />
       </td>
     </tr>
   </tbody>

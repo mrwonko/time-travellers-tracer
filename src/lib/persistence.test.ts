@@ -18,8 +18,17 @@ const sampleStory: Story = {
 };
 
 describe('emptyStory', () => {
-  test('has empty arrays for every field', () => {
-    expect(emptyStory()).toEqual({ events: [], observers: [], universes: [] });
+  test('has empty events/observers but one nameless universe', () => {
+    const story = emptyStory();
+    expect(story.events).toEqual([]);
+    expect(story.observers).toEqual([]);
+    expect(story.universes).toHaveLength(1);
+    expect(story.universes[0].label).toBeUndefined();
+    expect(story.universes[0].id).toBeTruthy();
+  });
+
+  test('generates a fresh universe id on every call', () => {
+    expect(emptyStory().universes[0].id).not.toBe(emptyStory().universes[0].id);
   });
 });
 
@@ -35,8 +44,9 @@ describe('serializeStory / parseStoredDocument round trip', () => {
   });
 
   test('round trip works for an empty story', () => {
-    const raw = serializeStory(emptyStory());
-    expect(parseStoredDocument(raw)).toEqual(emptyStory());
+    const story = emptyStory();
+    const raw = serializeStory(story);
+    expect(parseStoredDocument(raw)).toEqual(story);
   });
 });
 
