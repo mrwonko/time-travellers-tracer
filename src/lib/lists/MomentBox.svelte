@@ -106,7 +106,8 @@
   class="moment-drag-box"
   class:drop-top={hoverEdge === 'top'}
   class:drop-bottom={hoverEdge === 'bottom'}
-  class:potential-target={isPotentialTarget && !hoverEdge}
+  class:potential-top={isPotentialTarget && hoverEdge !== 'top'}
+  class:potential-bottom={isPotentialTarget && hoverEdge !== 'bottom'}
   data-drag-box
   use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange: (edge) => (hoverEdge = edge) }}
 >
@@ -187,13 +188,19 @@
     border-top-color: var(--color-accent);
   }
 
-  /* Subtle dashed: shown at *both* this box's possible insertion points
-     while a compatible drag is in flight and not yet hovering this box
-     specifically — so every place a drop could land is visible up front,
-     not just discoverable by hovering each box in turn. Turns into the
-     single bright line above once this box becomes the actual target. */
-  .moment-drag-box.potential-target::before,
-  .moment-drag-box.potential-target::after {
+  /* Subtle dashed: shown at each of this box's possible insertion points
+     independently while a compatible drag is in flight — so every place a
+     drop could land is visible up front, not just discoverable by
+     hovering each box in turn. Each edge only stops being dashed (and
+     turns into the single bright line above) once *that specific* edge
+     becomes the live hover target — hovering one edge must not blank out
+     the other edge's hint, it's still a valid drop spot. */
+  .moment-drag-box.potential-top::before {
+    border-top-style: dashed;
+    border-top-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .moment-drag-box.potential-bottom::after {
     border-top-style: dashed;
     border-top-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }

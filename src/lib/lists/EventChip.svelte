@@ -54,7 +54,8 @@
   class="event-drag-box"
   class:drop-before={hoverEdge === 'top'}
   class:drop-after={hoverEdge === 'bottom'}
-  class:potential-target={isPotentialTarget && !hoverEdge}
+  class:potential-before={isPotentialTarget && hoverEdge !== 'top'}
+  class:potential-after={isPotentialTarget && hoverEdge !== 'bottom'}
   data-drag-box
   use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange: (edge) => (hoverEdge = edge) }}
 >
@@ -108,12 +109,17 @@
     border-left-color: var(--color-accent);
   }
 
-  /* Subtle dashed: shown at *both* this chip's possible insertion points
-     while a compatible drag is in flight and not yet hovering this chip
-     specifically — see MomentBox's .potential-target for the full
-     rationale (same mechanism, this level's axis). */
-  .event-drag-box.potential-target::before,
-  .event-drag-box.potential-target::after {
+  /* Subtle dashed: shown at each of this chip's possible insertion points
+     independently while a compatible drag is in flight — see MomentBox's
+     .potential-top/.potential-bottom for the full rationale (same
+     mechanism, this level's axis: hovering one edge must not blank out
+     the other edge's still-valid hint). */
+  .event-drag-box.potential-before::before {
+    border-left-style: dashed;
+    border-left-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .event-drag-box.potential-after::after {
     border-left-style: dashed;
     border-left-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
