@@ -19,15 +19,18 @@
     type?: 'button' | 'submit';
   } = $props();
 
-  // Feedback is triggered by a *completed* click, never by :active/press
-  // state. A press-driven `transform: scale()` is actively risky here:
-  // it shrinks the hit-test box from the moment the pointer goes down, so
-  // a press that starts near the button's edge and drags off before
-  // release can lose the element under the pointer entirely — exactly
-  // the drag-off-then-release-outside sequence that would otherwise still
-  // fire a click. Re-keying this span on every real click instead
-  // restarts its CSS animation from scratch, purely as a retroactive
-  // acknowledgment after the click has already fired.
+  // Two separate feedback mechanisms, deliberately not the same one:
+  // - Press feedback (`:active`, pure CSS below) scales only the icon
+  //   glyph inside the button, not the button itself — the button's own
+  //   box (and therefore its hit-test area) never changes size, so a
+  //   press that starts near the edge and drags off before release can't
+  //   lose the element under the pointer. Scaling the *button* was tried
+  //   first and rejected for exactly that reason.
+  // - Click-completion feedback (the color pulse below) still needs to
+  //   fire only after a real click, since :active alone doesn't tell you
+  //   whether the press actually ended in a click vs. a drag-off. Re-
+  //   keying this span on every click restarts its CSS animation from
+  //   scratch, purely as a retroactive acknowledgment.
   let flashKey = $state(0);
   function handleClick(e: MouseEvent) {
     onclick?.(e);
@@ -100,15 +103,24 @@
 
   .icon-btn-flash {
     display: inline-flex;
-    animation: icon-btn-press 150ms var(--ease-standard);
+    animation: icon-btn-click-pulse 200ms var(--ease-standard);
   }
 
-  @keyframes icon-btn-press {
+  /* Press feedback: scales only the icon, never the button box (see the
+     comment above flashKey in the script for why). */
+  .icon-btn:active .icon-btn-flash {
+    transform: scale(0.85);
+  }
+
+  /* Click-completion feedback: a brief color pulse to the secondary
+     (cyan) accent, distinct from both variants' resting colors (ink on
+     amber for default/accent, dimmed fg for ghost), then back. */
+  @keyframes icon-btn-click-pulse {
     from {
-      transform: scale(0.85);
+      color: var(--color-accent-secondary-ink);
     }
     to {
-      transform: scale(1);
+      color: inherit;
     }
   }
 </style>
