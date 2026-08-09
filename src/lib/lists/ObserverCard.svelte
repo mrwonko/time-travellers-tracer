@@ -14,7 +14,7 @@
   import CollapsiblePanel from '../CollapsiblePanel.svelte';
   import MomentSequenceBlock from './MomentSequenceBlock.svelte';
   import DropIndicatorLine from '../dnd/DropIndicatorLine.svelte';
-  import { type DragBoxData } from '../dnd/actions';
+  import { dropBox, type DragBoxData } from '../dnd/actions';
   import { getDragging } from '../dnd/dragState.svelte';
   import { pushUndo } from '../toastQueue.svelte';
   import { moveWithinList, spliceListInto, type Edge } from '../reorder';
@@ -65,6 +65,24 @@
   function addSequence() {
     observer.sequences = [...observer.sequences, { id: generateId(), moments: [] }];
   }
+
+  // storyEvent dropped on the "Add sequence" button -> skip the empty-
+  // sequence intermediate state entirely and create one already containing
+  // a moment for the dragged event. Same undo treatment as
+  // insertEventAsMoment (moment/sequence contents are spec-meaningful).
+  function createSequenceWithEvent(eventId: EventID) {
+    const before = observer.sequences;
+    observer.sequences = [
+      ...before,
+      { id: generateId(), moments: [{ id: generateId(), events: [eventId], direction: 'forward' }] },
+    ];
+    pushUndo('Added sequence', () => {
+      observer.sequences = before;
+    });
+  }
+
+  let isAddSequencePotentialTarget = $derived(getDragging()?.level === 'storyEvent');
+  let addSequenceHovered = $state(false);
 
   function removeSequence(seqId: SequenceID) {
     const index = observer.sequences.findIndex((s) => s.id === seqId);
@@ -225,6 +243,51 @@
       observer.sequences = before;
     });
   }
+
+  // Wraps a raw event id in a brand-new single-event Moment and splices it
+  // into `seqId` at `index` — 0 = front, moments.length = end, i = "before
+  // moment i". One function for all three positions (front/between/end):
+  // they're all the same splice, just at a different index computed by
+  // whoever actually knows the array (MomentSequenceBlock). Undo for the
+  // same reason reorderMoments has it: moment order inside a sequence is
+  // spec-meaningful, and a misdropped drag is far likelier than a
+  // mis-clicked button.
+  function insertEventAsMoment(seqId: SequenceID, eventId: EventID, index: number) {
+    const before = observer.sequences;
+    observer.sequences = before.map((s) => {
+      if (s.id !== seqId) return s;
+      const moments = [...s.moments];
+      moments.splice(Math.max(0, Math.min(index, moments.length)), 0, {
+        id: generateId(),
+        events: [eventId],
+        direction: 'forward',
+      });
+      return { ...s, moments };
+    });
+    pushUndo('Added moment', () => {
+      observer.sequences = before;
+    });
+  }
+
+  function addEventToMoment(seqId: SequenceID, momentId: MomentID, eventId: EventID) {
+    const before = observer.sequences;
+    const target = before.find((s) => s.id === seqId)?.moments.find((m) => m.id === momentId);
+    // Moment.events is a set — a repeat drop of an event already in this
+    // moment is a no-op, not a duplicate, and shouldn't push an undo for
+    // an edit that didn't actually happen.
+    if (!target || target.events.includes(eventId)) return;
+    observer.sequences = before.map((s) =>
+      s.id !== seqId
+        ? s
+        : {
+            ...s,
+            moments: s.moments.map((m) => (m.id !== momentId ? m : { ...m, events: [...m.events, eventId] })),
+          },
+    );
+    pushUndo('Added event to moment', () => {
+      observer.sequences = before;
+    });
+  }
 </script>
 
 <CollapsiblePanel open={false}>
@@ -276,6 +339,8 @@
         onReorderEvents={(momentId, draggedId, targetId, edge) =>
           reorderEvents(sequence.id, momentId, draggedId, targetId, edge)}
         onHoverChange={(edge) => updateSequenceHover(sequence.id, edge)}
+        onInsertEventAsMoment={(eventId, index) => insertEventAsMoment(sequence.id, eventId, index)}
+        onAddEventToMoment={(momentId, eventId) => addEventToMoment(sequence.id, momentId, eventId)}
       />
       <div class="sequence-gap">
         <DropIndicatorLine
@@ -284,7 +349,19 @@
         />
       </div>
     {/each}
-    <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />
+    <div
+      class="add-sequence-drop"
+      class:potential-target={isAddSequencePotentialTarget}
+      class:hovered={addSequenceHovered}
+      use:dropBox={{
+        data: () => ({ level: 'sequence', id: observer.id }) as DragBoxData,
+        canDrop: (source) => source.level === 'storyEvent',
+        onDrop: (source) => createSequenceWithEvent(source.id),
+        onHoverChange: (edge) => (addSequenceHovered = edge !== null),
+      }}
+    >
+      <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />
+    </div>
   </div>
 </CollapsiblePanel>
 
@@ -325,5 +402,45 @@
      for the identical pattern one level deeper. */
   .sequence-gap {
     height: 0.75rem;
+  }
+
+  /* Wraps "Add sequence" purely so it can also be a storyEvent drop
+     target — IconButton doesn't support forwarding a `use:` action
+     through its own button (same reason DragHandle is its own component,
+     see its file comment). Outline, not border, so it costs no layout
+     shift when a drag starts; same dashed -> solid accent progression as
+     MomentBox's .moment-body for the same "drop here" meaning one level
+     up (creates a new sequence instead of adding to an existing moment).
+
+     flex-direction: column (matching .sequences' own direction, not the
+     inline-flex/row default) is load-bearing, not decorative: the button
+     used to be stretched to fill .sequences' full width for free, simply
+     by being .sequences' own direct flex-column child (align-items:
+     stretch's default cross axis = width in a column). Wrapping it in a
+     *row*-direction flex container changed its cross axis to height
+     instead, so it silently fell back to its own tiny intrinsic width —
+     full-width outline, shrunk square button floating inside it. Matching
+     the direction restores the original stretch-to-full-width behavior,
+     and padding (rather than the button's own edge) is what gives the
+     drop target some breathing room now that it's a real, hoverable
+     region rather than just the button's own hit area. Inline padding
+     matches .sequence-block's own (0.9rem) so the button's edges line up
+     with the moment/sequence boxes above it, instead of bleeding all the
+     way out to .sequences' own edge like a plain flex-stretched child
+     would. */
+  .add-sequence-drop {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0.9rem;
+    outline: var(--border-width) dashed transparent;
+  }
+
+  .add-sequence-drop.potential-target {
+    outline-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .add-sequence-drop.hovered {
+    outline-style: solid;
+    outline-color: var(--color-accent);
   }
 </style>

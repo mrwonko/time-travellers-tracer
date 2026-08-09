@@ -15,9 +15,20 @@
   // ObserverCard, driven by both neighboring sequences' hover state — see
   // DropIndicatorLine.svelte and ObserverCard's isSequenceGapHovered.
   // This block just forwards its own hover state upward via
-  // onHoverChange. Its own moments list applies the identical pattern
-  // one level deeper, with this component as the "parent" for
-  // MomentBox's gaps.
+  // onHoverChange. Its own moments list applies a similar pattern one
+  // level deeper for moment/sequence drags (MomentBox's own onHoverChange
+  // bubbling up to updateMomentHover) — but a storyEvent drag targets the
+  // .moment-gap divs *themselves*, directly (see the gap dropBox below):
+  // unlike reordering an existing moment/sequence (which has a real box to
+  // grab and an edge to be closest to), inserting a *new* moment has no
+  // existing box to attach a "closest edge" position to, and proxying it
+  // through the neighboring MomentBox's header (an earlier version of this
+  // did exactly that) meant the visible insertion-line hint didn't
+  // correspond to where you actually had to drop — you had to hover the
+  // moment *below* the gap you wanted. Making the gap its own drop target
+  // fixes that directly, and as a side effect uniformly covers "insert
+  // after the last moment" too (previously only reachable via the
+  // far-away .sequence-drop-after strip below the add-moment row).
   import { generateId } from '../id';
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';
@@ -47,6 +58,8 @@
     onReorderSequences,
     onReorderEvents,
     onHoverChange,
+    onInsertEventAsMoment,
+    onAddEventToMoment,
   }: {
     sequence: MomentSequence;
     observerId: ObserverID;
@@ -62,12 +75,16 @@
     onReorderSequences: (draggedSequenceId: SequenceID, targetSequenceId: SequenceID, edge: Edge) => void;
     onReorderEvents: (momentId: MomentID, draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
     onHoverChange: (edge: Edge | null) => void;
+    // storyEvent dropped at index `index` within this sequence -> wrap it
+    // in a brand-new moment spliced in there (0 = front, moments.length =
+    // end). storyEvent dropped on an existing moment (handled in
+    // MomentBox, threaded through as onAddEventToMoment) -> add it to that
+    // moment instead.
+    onInsertEventAsMoment: (eventId: EventID, index: number) => void;
+    onAddEventToMoment: (momentId: MomentID, eventId: EventID) => void;
   } = $props();
 
-  // Deliberately just a one-time default, like ObserverCard's own
-  // newMomentEvents — doesn't need to track later changes to eventOptions.
-  // svelte-ignore state_referenced_locally
-  let newMomentEvents = $state<string[]>(eventOptions[0] ? [eventOptions[0].id] : []);
+  let newMomentEvents = $state<string[]>([]);
   let newMomentDirection = $state<'forward' | 'inverted'>('forward');
   function addMoment() {
     if (!newMomentEvents.length) return;
@@ -105,14 +122,18 @@
   }
 
   function canDropEmptyMoments(source: DragBoxData): boolean {
+    if (source.level === 'storyEvent') return true;
     return source.level === 'sequence' && source.id !== sequence.id && source.containerId === observerId;
   }
 
   let emptyMomentsHovered = $state(false);
 
   function handleEmptyMomentsDrop(source: DragBoxData) {
-    if (source.level !== 'sequence') return;
-    onMergeInto(source.id, null, null);
+    if (source.level === 'storyEvent') {
+      onInsertEventAsMoment(source.id, 0);
+    } else if (source.level === 'sequence') {
+      onMergeInto(source.id, null, null);
+    }
   }
 
   let isEmptyMomentsPotentialTarget = $derived.by(() => {
@@ -149,17 +170,36 @@
 
   // See ObserverCard's identical isSequenceGapExcluded for why: the gap
   // right next to the dragged moment itself is never a real drop
-  // position, since it would just re-insert it where it already is.
+  // position, since it would just re-insert it where it already is. Only
+  // relevant to moment/sequence drags — a storyEvent drag has no existing
+  // list entry to be "next to", every gap is always a valid insertion
+  // point for it.
   function isMomentGapExcluded(beforeId: MomentID | null, afterId: MomentID | null): boolean {
     const dragging = getDragging();
     return dragging !== null && (dragging.id === beforeId || dragging.id === afterId);
   }
 
+  // Each gap div is its own real drop target for a storyEvent drag (see
+  // the dropBox registration in the template) — index-addressed, not
+  // id/edge-addressed like hoveredMoment, since a gap has no moment
+  // identity of its own. Kept as a separate hover source from
+  // hoveredMoment (used for actual moment/sequence reorders) rather than
+  // reusing it, since a gap's "hovered" state is a direct hit on the gap
+  // itself, not something bubbled up from a neighboring box.
+  let hoveredGapIndex = $state<number | null>(null);
+
+  function updateGapHover(index: number, edge: Edge | null) {
+    if (edge !== null) hoveredGapIndex = index;
+    else if (hoveredGapIndex === index) hoveredGapIndex = null;
+  }
+
   function isMomentGapPotential(beforeId: MomentID | null, afterId: MomentID | null): boolean {
+    if (getDragging()?.level === 'storyEvent') return true;
     return isMomentsPotentialTarget && !isMomentGapExcluded(beforeId, afterId);
   }
 
-  function isMomentGapHovered(beforeId: MomentID | null, afterId: MomentID | null): boolean {
+  function isMomentGapHovered(beforeId: MomentID | null, afterId: MomentID | null, index: number): boolean {
+    if (getDragging()?.level === 'storyEvent') return hoveredGapIndex === index;
     if (isMomentGapExcluded(beforeId, afterId)) return false;
     if (!hoveredMoment) return false;
     if (afterId !== null && hoveredMoment.id === afterId && hoveredMoment.edge === 'top') return true;
@@ -199,14 +239,22 @@
         onHoverChange: (edge) => (emptyMomentsHovered = edge !== null),
       }}
     >
-      No moments yet — drag another sequence here to merge it in.
+      No moments yet — drop an event here, or drag another sequence in to merge it.
     </div>
   {:else}
     <div class="moments">
-      <div class="moment-gap">
+      <div
+        class="moment-gap"
+        use:dropBox={{
+          data: () => ({ level: 'sequence', id: sequence.id }) as DragBoxData,
+          canDrop: (source) => source.level === 'storyEvent',
+          onDrop: (source) => onInsertEventAsMoment(source.id, 0),
+          onHoverChange: (edge) => updateGapHover(0, edge),
+        }}
+      >
         <DropIndicatorLine
           potential={isMomentGapPotential(null, sequence.moments[0]?.id ?? null)}
-          hovered={isMomentGapHovered(null, sequence.moments[0]?.id ?? null)}
+          hovered={isMomentGapHovered(null, sequence.moments[0]?.id ?? null, 0)}
         />
       </div>
       {#each sequence.moments as moment, i (moment.id)}
@@ -223,11 +271,20 @@
           onMergeInto={(sourceSeqId, targetMomentId, edge) => onMergeInto(sourceSeqId, targetMomentId, edge)}
           onReorderEvents={(draggedId, targetId, edge) => onReorderEvents(moment.id, draggedId, targetId, edge)}
           onHoverChange={(edge) => updateMomentHover(moment.id, edge)}
+          onAddEvent={(eventId) => onAddEventToMoment(moment.id, eventId)}
         />
-        <div class="moment-gap">
+        <div
+          class="moment-gap"
+          use:dropBox={{
+            data: () => ({ level: 'sequence', id: sequence.id }) as DragBoxData,
+            canDrop: (source) => source.level === 'storyEvent',
+            onDrop: (source) => onInsertEventAsMoment(source.id, i + 1),
+            onHoverChange: (edge) => updateGapHover(i + 1, edge),
+          }}
+        >
           <DropIndicatorLine
             potential={isMomentGapPotential(moment.id, sequence.moments[i + 1]?.id ?? null)}
-            hovered={isMomentGapHovered(moment.id, sequence.moments[i + 1]?.id ?? null)}
+            hovered={isMomentGapHovered(moment.id, sequence.moments[i + 1]?.id ?? null, i + 1)}
           />
         </div>
       {/each}
@@ -237,7 +294,14 @@
   <div class="add-moment">
     <MultiSelectCombobox options={eventOptions} bind:selected={newMomentEvents} placeholder="Events…" />
     <DirectionToggle bind:direction={newMomentDirection} />
-    <IconButton icon="plus" label="Add moment" variant="accent" size="sm" onclick={addMoment} />
+    <IconButton
+      icon="plus"
+      label="Add moment"
+      variant="accent"
+      size="sm"
+      onclick={addMoment}
+      disabled={!newMomentEvents.length}
+    />
   </div>
 
   <!-- The trailing counterpart to the header above — "insert after this
@@ -315,9 +379,12 @@
   }
 
   /* Fixed-size regardless of potential/hovered state (no layout shift
-     when a drag starts), same height as the old flex `gap` it replaces. */
+     when a drag starts) — a bit taller than the flex `gap` it originally
+     just visually replaced (0.5rem), since it's now also a real drop
+     target for a storyEvent drag (see the dropBox registrations above),
+     not purely decorative. */
   .moment-gap {
-    height: 0.5rem;
+    height: 0.75rem;
   }
 
   .moments-empty {

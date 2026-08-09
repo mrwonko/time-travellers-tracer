@@ -7,13 +7,21 @@
 
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
+import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import type { Edge } from '../reorder';
 
 export interface DragBoxData {
-  level: 'sequence' | 'moment' | 'event';
+  // 'event' is a chip already inside a specific moment (containerId = that
+  // moment's id, for reordering within it) — distinct from 'storyEvent', a
+  // raw StoryEvent dragged out of the Events table (no containerId), which
+  // can be dropped onto a moment (add it there) or a sequence (create a
+  // new moment containing it, at a position determined by the drop
+  // target).
+  level: 'sequence' | 'moment' | 'event' | 'storyEvent';
   id: string;
   // The sequence id a moment payload belongs to, or the moment id an
-  // event payload belongs to — not meaningful for a 'sequence' payload.
+  // event payload belongs to — not meaningful for a 'sequence' or
+  // 'storyEvent' payload.
   containerId?: string;
 }
 
@@ -88,5 +96,19 @@ export function dropBox(node: HTMLElement, params: DropBoxParams) {
       current = next;
     },
     destroy: cleanup,
+  };
+}
+
+// The app-wide autoScrollWindowForElements() (dragState.svelte.ts) only
+// scrolls the page itself — once a panel's own overflow is what's actually
+// scrolling (CollapsiblePanel's capHeight prop), dragging near that
+// panel's edge needs its own auto-scroll registration. `enabled` is read
+// once at mount, matching this codebase's other one-time-default props
+// (e.g. MomentSequenceBlock's newMomentEvents) — CollapsiblePanel's
+// capHeight is a static per-instance choice, never toggled at runtime.
+export function autoScrollContainer(node: HTMLElement, enabled: boolean) {
+  const cleanup = enabled ? autoScrollForElements({ element: node }) : undefined;
+  return {
+    destroy: () => cleanup?.(),
   };
 }

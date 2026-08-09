@@ -20,6 +20,12 @@
   // instead of rendering anything itself. Its own events list applies
   // the identical pattern one level deeper, with this component as the
   // "parent" for EventChip's gaps.
+  //
+  // .moment-body is additionally its own drop target for a storyEvent
+  // drag (adds the event to this moment) — .moment-header is deliberately
+  // *not* one: inserting a brand-new moment is handled entirely by
+  // MomentSequenceBlock's own moment-gap divs now (see that file's
+  // comment for why), not proxied through this box.
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';
   import DirectionToggle from '../DirectionToggle.svelte';
@@ -47,6 +53,7 @@
     onMergeInto,
     onReorderEvents,
     onHoverChange,
+    onAddEvent,
   }: {
     moment: Moment;
     index: number;
@@ -60,6 +67,12 @@
     onMergeInto: (sourceSequenceId: SequenceID, targetMomentId: MomentID, edge: Edge) => void;
     onReorderEvents: (draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
     onHoverChange: (edge: Edge | null) => void;
+    // storyEvent dropped on this moment's body -> add the event to this
+    // moment (inserting a *new* moment, by contrast, is handled by
+    // MomentSequenceBlock's own moment-gap divs, not by this box — see its
+    // comment for why a gap needs to be its own drop target rather than
+    // proxied through a neighboring box's header).
+    onAddEvent: (eventId: EventID) => void;
   } = $props();
 
   const dragData: DragBoxData = $derived({ level: 'moment', id: moment.id, containerId: sequenceId });
@@ -86,9 +99,27 @@
     }
   }
 
+  // .moment-body is its own sibling drop target for a storyEvent drag (not
+  // nested inside .moment-drag-box's own target above): Pragmatic DnD's
+  // hit-testing walks the whole ancestor chain and fires onDrop on every
+  // target whose canDrop returned true, so a nested target accepting the
+  // same source level as its parent would double-fire. Keeping it a plain
+  // sibling — the same rule MomentSequenceBlock documents for its own
+  // header/trailing regions — means at most one target ever accepts a
+  // given drag. While editing, editEvents is an in-progress draft that
+  // save() writes back to moment.events wholesale — a drop landing
+  // directly in moment.events during that window would be silently
+  // discarded on save.
+  function canDropIntoBody(source: DragBoxData): boolean {
+    return !editing && source.level === 'storyEvent';
+  }
+
+  let bodyHovered = $state(false);
+
   let editing = $state(false);
   let editEvents = $state<string[]>([]);
   let editDirection = $state<'forward' | 'inverted'>('forward');
+  let isBodyPotentialTarget = $derived(!editing && getDragging()?.level === 'storyEvent');
 
   function startEdit() {
     editEvents = [...moment.events];
@@ -173,7 +204,17 @@
         {/if}
       </div>
     </div>
-    <div class="moment-body">
+    <div
+      class="moment-body"
+      class:potential-target={isBodyPotentialTarget}
+      class:hovered={bodyHovered}
+      use:dropBox={{
+        data: () => dragData,
+        canDrop: canDropIntoBody,
+        onDrop: (source) => onAddEvent(source.id),
+        onHoverChange: (edge) => (bodyHovered = edge !== null),
+      }}
+    >
       {#if editing}
         <MultiSelectCombobox options={eventOptions} bind:selected={editEvents} placeholder="Events…" />
         <DirectionToggle bind:direction={editDirection} />
@@ -257,6 +298,26 @@
     align-items: center;
     gap: 0.6rem;
     flex-wrap: wrap;
+    /* Outline, not border: it occupies no layout box, so the moment
+       doesn't shift by a pixel when a drag starts — the same no-layout-
+       shift rule the fixed-size .event-gap/.moment-gap strips exist to
+       honour. */
+    outline: var(--border-width) dashed transparent;
+    outline-offset: 2px;
+  }
+
+  /* Same subtle-dashed -> bright-solid progression as .moments-empty in
+     MomentSequenceBlock and the DropIndicatorLine gap lines: dashed = "an
+     event could be added to this moment", solid = "this is the moment
+     under the pointer right now". No transition (editor surfaces are
+     near-zero-motion). */
+  .moment-body.potential-target {
+    outline-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .moment-body.hovered {
+    outline-style: solid;
+    outline-color: var(--color-accent);
   }
 
   .moment-events {
