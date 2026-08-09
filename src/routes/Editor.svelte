@@ -10,7 +10,9 @@
   // Seed data only — nothing here persists (spec §11 Phase 1, entry masks
   // before the storage layer). Small closed-loop example: Voss lives it
   // forward, the Handler lives the same stretch inverted, and they meet
-  // at the handoff.
+  // at the handoff — plus one multi-event moment (the Handler witnesses
+  // the handoff and the depot fire together, as a single simultaneous
+  // moment) to demonstrate that a Moment isn't always exactly one event.
   const primeId = generateId();
 
   let universes = $state<StoryUniverse[]>([{ id: primeId, label: 'Prime' }]);
