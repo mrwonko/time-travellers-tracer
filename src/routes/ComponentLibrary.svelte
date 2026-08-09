@@ -33,7 +33,7 @@
   <PageHeader tag="COMPONENT LIBRARY &middot; REFERENCE ONLY" />
 
   <main>
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>Icon</h2>
       <p class="note">Six names, deliberately kept small. Square caps/miter joins, not round — matches the sharp-corner design language. Always <code>aria-hidden</code>; the accessible name lives on the enclosing button.</p>
       <div class="icon-row">
@@ -46,7 +46,7 @@
       </div>
     </ChamferBox>
 
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>IconButton</h2>
       <p class="note">Accessible name via <code>aria-label</code> (not <code>alt</code> — that's <code>&lt;img&gt;</code>-only). Solid amber by default — every editor action button uses this, no separate "primary" color needed. Delete is distinguished from Edit only by the "x" glyph and its label — no danger/red color, since the palette reserves wider hues for future per-universe graph coloring. "ghost" stays available for lower-emphasis cases, not currently used in the editor itself.</p>
       <div class="button-row">
@@ -60,7 +60,7 @@
       </div>
     </ChamferBox>
 
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>UuidTag</h2>
       <p class="note">Collapsed behind a tap-to-reveal toggle below 860px viewport width; always visible above it. Both states shown here regardless of your current viewport, via the <code>initialRevealed</code> prop (added for this page — zero behavior change at existing call sites, which never pass it).</p>
       <div class="button-row">
@@ -69,13 +69,13 @@
       </div>
     </ChamferBox>
 
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>DirectionToggle</h2>
       <p class="note">Bindable <code>direction</code>. Currently: <span class="mono">{demoDirection}</span></p>
       <DirectionToggle bind:direction={demoDirection} />
     </ChamferBox>
 
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>DirectionBadge</h2>
       <p class="note">Read-only counterpart to DirectionToggle — used in the observers view instead of the full "FORWARD"/"INVERTED" words, since space there is limited. Same color pairing as the toggle's active state: amber for forward, cyan for inverted.</p>
       <div class="button-row">
@@ -84,24 +84,27 @@
       </div>
     </ChamferBox>
 
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>CollapsiblePanel</h2>
       <p class="note">Chamfered chrome + collapse, backed by native <code>&lt;details&gt;/&lt;summary&gt;</code> (not hand-rolled JS state) — reused by every editor list panel, including per-row in ObserverList via the <code>titleSnippet</code>/<code>actions</code> props. Grid layouts should set <code>align-items: start</code> on the container, or collapsing one panel won't visibly free space for its sibling — see Editor.svelte.</p>
       <CollapsiblePanel title="Example panel" count={3} bind:open={panelDemoOpen}>
+        {#snippet actions()}
+          <IconButton icon="edit" label="Edit example panel" size="sm" onclick={() => {}} />
+        {/snippet}
         <p>Panel content goes here. Open: <span class="mono">{panelDemoOpen}</span></p>
       </CollapsiblePanel>
     </ChamferBox>
 
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>UndoToast</h2>
-      <p class="note">Pairs with instant, no-confirmation deletes across the editor. Pushed onto a shared queue (<code>toastQueue.svelte.ts</code>) rendered by one <code>ToastHost</code> mounted globally in <code>App.svelte</code> — fixed to the bottom-right of the viewport regardless of where the triggering list sits or how far the page is scrolled, and stacked if more than one is active. Auto-dismisses after 6s by default. The undo action is colored text, not an icon — reads more clearly as "undo" than a small arrow glyph would at this size.</p>
+      <p class="note">Pairs with instant, no-confirmation deletes across the editor. Pushed onto a shared queue (<code>toastQueue.svelte.ts</code>) rendered by one <code>ToastHost</code> mounted globally in <code>App.svelte</code> — fixed to the bottom-left of the viewport regardless of where the triggering list sits or how far the page is scrolled, and stacked if more than one is active. Auto-dismisses after 6s by default. The undo action is colored text, not an icon — reads more clearly as "undo" than a small arrow glyph would at this size.</p>
       <button type="button" class="field demo-trigger" onclick={triggerUndoDemo}>Simulate a delete</button>
     </ChamferBox>
 
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>MultiSelectCombobox</h2>
       <p class="note">
-        Generic over <code>&#123; id, label &#125;</code> options. Trigger matches the height of a normal <code>.field</code> input. Uses the native <code>popover</code> attribute + CSS anchor positioning, not a hand-rolled portal/dismiss — it renders in the browser's top layer (escaping <code>clip-path</code> on the chamfered panels for free) and gets outside-click/tap light-dismiss and Escape-to-close from the browser. FIXME: that light-dismiss still closes on a drag that stays entirely outside the popover (e.g. dragging the page to scroll it into view) — only drags that cross the popover itself are confirmed safe. Above/below flip is also a TODO — it always opens below the trigger for now.
+        Generic over <code>&#123; id, label &#125;</code> options. Trigger matches the height of a normal <code>.field</code> input. Uses the native <code>popover</code> attribute + CSS anchor positioning, not a hand-rolled portal/dismiss — it renders in the browser's top layer (escaping <code>clip-path</code> on the chamfered panels for free) and gets outside-click/tap light-dismiss and Escape-to-close from the browser. FIXME: that light-dismiss still closes on a drag that stays entirely outside the popover (e.g. dragging the page to scroll it into view) — only drags that cross the popover itself are confirmed safe. It always opens below the trigger (an above/below flip is a TODO); opening scrolls the trigger into view with clearance so the popover has room instead of extending past the page — try it on this swatch, deliberately placed at the bottom of the page to exercise that.
       </p>
       <MultiSelectCombobox options={comboboxOptions} bind:selected={comboboxSelected} placeholder="Select events…" />
       <p class="note">
@@ -109,16 +112,16 @@
       </p>
     </ChamferBox>
 
-    <ChamferBox tag="section" class="swatch">
+    <ChamferBox tag="section" class="complib-swatch">
       <h2>ChamferBox</h2>
       <p class="note">
-        The one place that applies the chamfered-corner clip-path classes from <code>app.css</code> — every other chamfered shape in the app (bordered panels, the wordmark, the CTA button) goes through this instead of applying <code>chamfer(-sm)(-bordered)</code> by hand, so the border trick's required <code>position</code>/<code>isolation</code> pairing can't be forgotten or clobbered again the way it was on <code>MultiSelectCombobox</code>'s popover.
+        The one place that applies the chamfered-corner clip-path classes (defined in its own <code>&lt;style&gt;</code> block, colocated with the <code>chamferClass()</code> helper) — every other chamfered shape in the app (bordered panels, the wordmark, the CTA button) goes through this instead of applying <code>chamfer(-sm)(-bordered)</code> by hand, so the border trick's required <code>position</code>/<code>isolation</code> pairing can't be forgotten or clobbered again the way it was on <code>MultiSelectCombobox</code>'s popover.
       </p>
       <div class="chamfer-demo-row">
-        <ChamferBox class="chamfer-demo-box">md, bordered</ChamferBox>
-        <ChamferBox size="sm" class="chamfer-demo-box">sm, bordered</ChamferBox>
-        <ChamferBox bordered={false} class="chamfer-demo-box chamfer-demo-solid">md, not bordered</ChamferBox>
-        <ChamferBox size="sm" bordered={false} class="chamfer-demo-box chamfer-demo-solid">sm, not bordered</ChamferBox>
+        <ChamferBox class="complib-chamfer-demo-box">md, bordered</ChamferBox>
+        <ChamferBox size="sm" class="complib-chamfer-demo-box">sm, bordered</ChamferBox>
+        <ChamferBox bordered={false} class="complib-chamfer-demo-box complib-chamfer-demo-solid">md, not bordered</ChamferBox>
+        <ChamferBox size="sm" bordered={false} class="complib-chamfer-demo-box complib-chamfer-demo-solid">sm, not bordered</ChamferBox>
       </div>
     </ChamferBox>
   </main>
@@ -135,6 +138,12 @@
   main {
     flex: 1;
     padding: clamp(1rem, 3vw, 3rem);
+    /* Deliberately generous, not matched to content: the MultiSelectCombobox
+       swatch is kept at the bottom of this page on purpose (to exercise the
+       "popover extends past the page" case), and its popover needs this much
+       actual scrollable room below the trigger for scrollIntoView to have
+       anywhere to scroll *to* — see handleToggle in MultiSelectCombobox.svelte. */
+    padding-bottom: calc(20rem + 3rem);
     display: flex;
     flex-direction: column;
     gap: clamp(1.25rem, 2.5vw, 2rem);
@@ -143,15 +152,18 @@
 
   /* :global() because the class is passed through to ChamferBox's own
      rendered element, not applied to an element literally present in this
-     component's template. */
-  :global(.swatch) {
+     component's template — which also means it's in the page's genuinely
+     global namespace, not Svelte-scoped to this file, hence the
+     "complib-" prefix (a clash here wouldn't be caught at build time the
+     way a scoped-selector clash would be). */
+  :global(.complib-swatch) {
     padding: clamp(1rem, 2vw, 1.5rem);
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
   }
 
-  :global(.swatch) h2 {
+  :global(.complib-swatch) h2 {
     font-size: 1.05rem;
   }
 
@@ -200,12 +212,12 @@
     gap: 1rem;
   }
 
-  :global(.chamfer-demo-box) {
+  :global(.complib-chamfer-demo-box) {
     padding: 1rem 1.25rem;
     font-size: 0.85rem;
   }
 
-  :global(.chamfer-demo-solid) {
+  :global(.complib-chamfer-demo-solid) {
     background: var(--color-accent);
     color: var(--color-ink);
   }
