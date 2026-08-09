@@ -121,12 +121,15 @@
   }
 
   /* Click-completion feedback: a brief background flash across the whole
-     button in the secondary (cyan) accent, fading out — same idea as the
-     hover state's opacity shift (an accent-colored highlight), but as a
-     pulse instead of a steady state, and covering the full button rather
-     than just the icon glyph so it reads clearly at a glance. Sits below
-     the icon (z-index above, on .icon-btn-icon) so the glyph stays crisp
-     on top of it. */
+     button, fading out — same idea as the hover state's opacity shift
+     (a highlight), but pushed one step further and as a pulse instead of
+     a steady state, covering the full button rather than just the icon
+     glyph so it reads clearly at a glance. Sits below the icon (z-index
+     above, on .icon-btn-icon) so the glyph stays crisp on top of it.
+     Color is variant-specific (below) rather than one fixed accent color
+     for every button — an unrelated hue (cyan was tried first) read as
+     jarring against the button's own resting color; a shade adjacent to
+     it reads as "this button, but a beat more" instead. */
   .icon-btn-bg-flash {
     position: absolute;
     inset: 0;
@@ -135,11 +138,27 @@
        default (1, fully opaque) rather than holding at 0, since plain
        `animation` (no explicit fill-mode) doesn't persist the end
        keyframe. Without it, every button ends up permanently tinted
-       cyan the moment its one-shot animation finishes. */
+       the moment its one-shot animation finishes. */
     opacity: 0;
-    background: var(--color-accent-secondary);
     animation: icon-btn-click-pulse 200ms var(--ease-standard);
     pointer-events: none;
+  }
+
+  /* default/accent rest on the bright amber accent — the flash goes to
+     amber-ink, the same hue's darker/richer "ink" counterpart already
+     used elsewhere for on-accent text, rather than a lighter tint (which
+     would wash out against the accent instead of reading as emphasis). */
+  .icon-btn-default .icon-btn-bg-flash,
+  .icon-btn-accent .icon-btn-bg-flash {
+    background: var(--color-accent-ink);
+  }
+
+  /* ghost rests dimmed (opacity: 0.55) in --color-fg with no background
+     of its own — flashing that same color at full strength as a
+     background is the equivalent move: the button's own resting color,
+     taken one step further. */
+  .icon-btn-ghost .icon-btn-bg-flash {
+    background: var(--color-fg);
   }
 
   @keyframes icon-btn-click-pulse {
