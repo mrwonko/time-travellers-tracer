@@ -20,7 +20,7 @@ function makeMoment(overrides: Partial<Moment> = {}): Moment {
 }
 
 describe('MomentBox', () => {
-  test('read view shows index, joined event labels, and direction badge', async () => {
+  test('read view shows index, one chip per event, and a direction badge', async () => {
     const { container } = await render(MomentBox, {
       props: {
         moment: makeMoment({ events: ['e1', 'e2'] }),
@@ -33,7 +33,10 @@ describe('MomentBox', () => {
     });
 
     expect(container.textContent).toContain('#3');
-    expect(container.textContent).toContain('Signal received at the depot + Handoff at the overpass');
+    const chips = container.querySelectorAll('.event-chip');
+    expect(chips).toHaveLength(2);
+    expect(chips[0].textContent?.trim()).toBe('Signal received at the depot');
+    expect(chips[1].textContent?.trim()).toBe('Handoff at the overpass');
     expect(container.textContent).toContain('FWD');
   });
 

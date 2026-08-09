@@ -13,6 +13,7 @@
   import DirectionBadge from '../DirectionBadge.svelte';
   import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import ChamferBox from '../ChamferBox.svelte';
+  import EventChip from './EventChip.svelte';
   import type { Moment } from '../types';
 
   let {
@@ -69,7 +70,11 @@
       <MultiSelectCombobox options={eventOptions} bind:selected={editEvents} placeholder="Events…" />
       <DirectionToggle bind:direction={editDirection} />
     {:else}
-      <span class="moment-events">{moment.events.map(eventLabel).join(' + ')}</span>
+      <div class="moment-events">
+        {#each moment.events as eventId (eventId)}
+          <EventChip label={eventLabel(eventId)} />
+        {/each}
+      </div>
       <DirectionBadge direction={moment.direction} />
     {/if}
   </div>
@@ -116,6 +121,8 @@
   }
 
   .moment-events {
-    font-size: 0.85rem;
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
   }
 </style>
