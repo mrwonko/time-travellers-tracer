@@ -17,9 +17,15 @@
     /* Fixed size regardless of context — without this, a flex/grid
        ancestor with default align-items/justify-items can stretch this
        to fill available width (e.g. a flex-column swatch section),
-       leaving one button's box looking like it "extends to the right". */
-    align-self: flex-start;
-    justify-self: start;
+       leaving one button's box looking like it "extends to the right".
+       center (not flex-start/start) — every real usage today
+       (.add-moment, MomentBox's edit-mode .moment-body) already sets
+       align-items: center on the parent for exactly this toggle's own
+       sibling controls, so flex-start was fighting the parent's already-
+       correct alignment rather than defending against a stretch that
+       wasn't happening there. */
+    align-self: center;
+    justify-self: center;
     width: fit-content;
     border: var(--border-width) solid var(--color-border-strong);
   }
