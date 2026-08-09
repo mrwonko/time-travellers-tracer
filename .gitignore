@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Playwright (once tests are added — see memory: playwright-testing-plan)
+# Playwright
 test-results
 playwright-report
 playwright/.cache
