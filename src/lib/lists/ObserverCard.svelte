@@ -423,11 +423,15 @@
      the direction restores the original stretch-to-full-width behavior,
      and padding (rather than the button's own edge) is what gives the
      drop target some breathing room now that it's a real, hoverable
-     region rather than just the button's own hit area. */
+     region rather than just the button's own hit area. Inline padding
+     matches .sequence-block's own (0.9rem) so the button's edges line up
+     with the moment/sequence boxes above it, instead of bleeding all the
+     way out to .sequences' own edge like a plain flex-stretched child
+     would. */
   .add-sequence-drop {
     display: flex;
     flex-direction: column;
-    padding: 0.3rem;
+    padding: 0.5rem 0.9rem;
     outline: var(--border-width) dashed transparent;
   }
 
