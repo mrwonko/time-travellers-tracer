@@ -102,98 +102,12 @@ button {
 }
 
 /* ---------------------------------------------------------------------
-   Shape utility — the chamfered-corner motif (design-language.md §Shape)
+   Shape utility — the chamfered-corner motif (design-language.md §Shape).
+   The `.chamfer*` classes themselves live in ChamferBox.svelte (global
+   styles, colocated with the `chamferClass()` helper that names them),
+   not here — this file only keeps the `--chamfer`/`--chamfer-sm` tokens,
+   since those are shared design tokens like the color/font ones above.
 --------------------------------------------------------------------- */
-.chamfer {
-  clip-path: polygon(
-    var(--chamfer) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    0% 100%,
-    0% var(--chamfer)
-  );
-}
-
-.chamfer-sm {
-  clip-path: polygon(
-    var(--chamfer-sm) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer-sm)),
-    calc(100% - var(--chamfer-sm)) 100%,
-    0% 100%,
-    0% var(--chamfer-sm)
-  );
-}
-
-/*
- * Bordered variants: clip-path clips a box's `border` along with
- * everything else, so a chamfered corner with a plain `border` has no
- * outline on the diagonal cut — only on the untouched straight edges.
- * These build the border from two stacked, independently-clipped layers
- * instead: an outer "frame" (background = border color) and an inset
- * "fill" (::before, offset by --border-width), so the outline is
- * continuous all the way around, diagonals included.
- */
-.chamfer-bordered,
-.chamfer-sm-bordered {
-  position: relative;
-  isolation: isolate;
-  background: var(--color-border);
-}
-
-.chamfer-bordered {
-  clip-path: polygon(
-    var(--chamfer) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    0% 100%,
-    0% var(--chamfer)
-  );
-}
-
-.chamfer-sm-bordered {
-  clip-path: polygon(
-    var(--chamfer-sm) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer-sm)),
-    calc(100% - var(--chamfer-sm)) 100%,
-    0% 100%,
-    0% var(--chamfer-sm)
-  );
-}
-
-.chamfer-bordered::before,
-.chamfer-sm-bordered::before {
-  content: '';
-  position: absolute;
-  inset: var(--border-width);
-  z-index: -1;
-  background: var(--chamfer-fill, var(--color-panel-bg));
-}
-
-.chamfer-bordered::before {
-  clip-path: polygon(
-    var(--chamfer) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    0% 100%,
-    0% var(--chamfer)
-  );
-}
-
-.chamfer-sm-bordered::before {
-  clip-path: polygon(
-    var(--chamfer-sm) 0%,
-    100% 0%,
-    100% calc(100% - var(--chamfer-sm)),
-    calc(100% - var(--chamfer-sm)) 100%,
-    0% 100%,
-    0% var(--chamfer-sm)
-  );
-}
 
 /* ---------------------------------------------------------------------
    Editor shared UI — form fields and data tables, used identically by
