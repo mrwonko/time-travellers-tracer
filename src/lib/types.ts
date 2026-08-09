@@ -13,7 +13,7 @@ export interface StoryUniverse {
 
 export interface StoryEvent {
   id: EventID;
-  label?: string;
+  label: string;
   // Free text for now (e.g. local time-of-day, other notes) — separate
   // from `label`, which is the short display name used everywhere else
   // (predecessor lists, moment displays). Not used by any algorithm,
@@ -31,7 +31,7 @@ export interface Moment {
 
 export interface StoryObserver {
   id: ObserverID;
-  name?: string;
+  name: string;
   sequence: Moment[];
 }
 
