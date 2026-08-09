@@ -410,11 +410,25 @@
      see its file comment). Outline, not border, so it costs no layout
      shift when a drag starts; same dashed -> solid accent progression as
      MomentBox's .moment-body for the same "drop here" meaning one level
-     up (creates a new sequence instead of adding to an existing moment). */
+     up (creates a new sequence instead of adding to an existing moment).
+
+     flex-direction: column (matching .sequences' own direction, not the
+     inline-flex/row default) is load-bearing, not decorative: the button
+     used to be stretched to fill .sequences' full width for free, simply
+     by being .sequences' own direct flex-column child (align-items:
+     stretch's default cross axis = width in a column). Wrapping it in a
+     *row*-direction flex container changed its cross axis to height
+     instead, so it silently fell back to its own tiny intrinsic width —
+     full-width outline, shrunk square button floating inside it. Matching
+     the direction restores the original stretch-to-full-width behavior,
+     and padding (rather than the button's own edge) is what gives the
+     drop target some breathing room now that it's a real, hoverable
+     region rather than just the button's own hit area. */
   .add-sequence-drop {
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
+    padding: 0.3rem;
     outline: var(--border-width) dashed transparent;
-    outline-offset: 2px;
   }
 
   .add-sequence-drop.potential-target {
