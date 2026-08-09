@@ -11,12 +11,10 @@
   import { generateId } from '../id';
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';
-  import DirectionToggle from '../DirectionToggle.svelte';
-  import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import CollapsiblePanel from '../CollapsiblePanel.svelte';
-  import MomentRow from './MomentRow.svelte';
+  import MomentSequenceBlock from './MomentSequenceBlock.svelte';
   import { pushUndo } from '../toastQueue.svelte';
-  import type { StoryObserver, StoryEvent, Moment } from '../types';
+  import type { StoryObserver, StoryEvent, Moment, SequenceID } from '../types';
 
   let {
     observer,
@@ -49,32 +47,73 @@
     editingName = false;
   }
 
-  // events: usually one, but a Moment can hold several simultaneously
-  // witnessed events (spec §3) — hence a combobox, not a plain select.
-  // Deliberately only a one-time default — doesn't need to track later
-  // changes to `events[0]`.
-  // svelte-ignore state_referenced_locally
-  let newMomentEvents = $state<string[]>(events[0] ? [events[0].id] : []);
-  let newMomentDirection = $state<'forward' | 'inverted'>('forward');
-  function addMoment() {
-    if (!newMomentEvents.length) return;
-    const moment: Moment = { id: generateId(), events: newMomentEvents, direction: newMomentDirection };
-    observer.sequence = [...observer.sequence, moment];
+  // Display label per sequence fragment — just its position in the array;
+  // sequences have no meaningful order relative to each other (spec §2),
+  // this is purely "which block on screen" for the merge-target picker.
+  let sequenceLabels = $derived(observer.sequences.map((s, i) => ({ id: s.id, label: `Sequence ${i + 1}` })));
+  let totalMoments = $derived(observer.sequences.reduce((sum, s) => sum + s.moments.length, 0));
+  let momentCountLabel = $derived(
+    `${totalMoments} moment${totalMoments === 1 ? '' : 's'} · ${observer.sequences.length} sequence${observer.sequences.length === 1 ? '' : 's'}`,
+  );
+
+  function addSequence() {
+    observer.sequences = [...observer.sequences, { id: generateId(), moments: [] }];
   }
 
-  function saveMoment(id: string, patch: { events: string[]; direction: 'forward' | 'inverted' }) {
-    observer.sequence = observer.sequence.map((m) => (m.id === id ? { ...m, ...patch } : m));
-  }
-
-  function removeMoment(id: string) {
-    const index = observer.sequence.findIndex((m) => m.id === id);
+  function removeSequence(seqId: SequenceID) {
+    const index = observer.sequences.findIndex((s) => s.id === seqId);
     if (index === -1) return;
-    const item = observer.sequence[index];
-    observer.sequence = observer.sequence.filter((m) => m.id !== id);
-    pushUndo('Deleted moment', () => {
-      const restored = [...observer.sequence];
+    const item = observer.sequences[index];
+    observer.sequences = observer.sequences.filter((s) => s.id !== seqId);
+    pushUndo('Deleted sequence', () => {
+      const restored = [...observer.sequences];
       restored.splice(index, 0, item);
-      observer.sequence = restored;
+      observer.sequences = restored;
+    });
+  }
+
+  function addMoment(seqId: SequenceID, moment: Moment) {
+    observer.sequences = observer.sequences.map((s) => (s.id === seqId ? { ...s, moments: [...s.moments, moment] } : s));
+  }
+
+  function saveMoment(seqId: SequenceID, momentId: string, patch: { events: string[]; direction: 'forward' | 'inverted' }) {
+    observer.sequences = observer.sequences.map((s) =>
+      s.id === seqId ? { ...s, moments: s.moments.map((m) => (m.id === momentId ? { ...m, ...patch } : m)) } : s,
+    );
+  }
+
+  function removeMoment(seqId: SequenceID, momentId: string) {
+    const sequence = observer.sequences.find((s) => s.id === seqId);
+    if (!sequence) return;
+    const index = sequence.moments.findIndex((m) => m.id === momentId);
+    if (index === -1) return;
+    const item = sequence.moments[index];
+    observer.sequences = observer.sequences.map((s) =>
+      s.id === seqId ? { ...s, moments: s.moments.filter((m) => m.id !== momentId) } : s,
+    );
+    pushUndo('Deleted moment', () => {
+      observer.sequences = observer.sequences.map((s) => {
+        if (s.id !== seqId) return s;
+        const restored = [...s.moments];
+        restored.splice(index, 0, item);
+        return { ...s, moments: restored };
+      });
+    });
+  }
+
+  // Merge is append-only concatenation (source's moments after target's) —
+  // fine-grained interleaving is an editor-UI nicety left for later (spec
+  // §3). Undo restores the full pre-merge sequences array wholesale rather
+  // than trying to re-split the merged moments back apart.
+  function mergeInto(sourceId: SequenceID, targetId: SequenceID) {
+    const before = observer.sequences;
+    const source = before.find((s) => s.id === sourceId);
+    if (!source) return;
+    observer.sequences = before
+      .filter((s) => s.id !== sourceId)
+      .map((s) => (s.id === targetId ? { ...s, moments: [...s.moments, ...source.moments] } : s));
+    pushUndo('Merged sequences', () => {
+      observer.sequences = before;
     });
   }
 </script>
@@ -92,7 +131,7 @@
     {:else}
       <span class="observer-name">{observer.name} <UuidTag id={observer.id} /></span>
     {/if}
-    <span class="moment-count mono">{observer.sequence.length} moment{observer.sequence.length === 1 ? '' : 's'}</span>
+    <span class="moment-count mono">{momentCountLabel}</span>
   {/snippet}
   {#snippet actions()}
     {#if editingName}
@@ -104,41 +143,22 @@
     {/if}
   {/snippet}
 
-  <div class="moments">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Event</th>
-          <th>Direction</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each observer.sequence as moment, i (moment.id)}
-          <MomentRow
-            {moment}
-            index={i + 1}
-            {eventOptions}
-            {eventLabel}
-            onSave={(patch) => saveMoment(moment.id, patch)}
-            onDelete={() => removeMoment(moment.id)}
-          />
-        {/each}
-        <tr class="add-row">
-          <td></td>
-          <td>
-            <MultiSelectCombobox options={eventOptions} bind:selected={newMomentEvents} placeholder="Events…" />
-          </td>
-          <td>
-            <DirectionToggle bind:direction={newMomentDirection} />
-          </td>
-          <td class="actions">
-            <IconButton icon="plus" label="Add moment" variant="accent" size="sm" onclick={addMoment} />
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="sequences">
+    {#each observer.sequences as sequence, i (sequence.id)}
+      <MomentSequenceBlock
+        {sequence}
+        label={sequenceLabels[i].label}
+        {eventOptions}
+        {eventLabel}
+        mergeTargets={sequenceLabels.filter((t) => t.id !== sequence.id)}
+        onAddMoment={(moment) => addMoment(sequence.id, moment)}
+        onSaveMoment={(momentId, patch) => saveMoment(sequence.id, momentId, patch)}
+        onDeleteMoment={(momentId) => removeMoment(sequence.id, momentId)}
+        onDeleteSequence={() => removeSequence(sequence.id)}
+        onMergeInto={(targetId) => mergeInto(sequence.id, targetId)}
+      />
+    {/each}
+    <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />
   </div>
 </CollapsiblePanel>
 
@@ -157,17 +177,14 @@
     opacity: 0.5;
   }
 
-  .moments {
+  .sequences {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     /* This panel can end up quite narrow (the right-hand column of the
        two-column layout). Scroll rather than clip if content genuinely
        can't compress further — but don't force a min-width, or every
        narrow column scrolls even when the content would actually fit. */
     overflow-x: auto;
-  }
-
-  .actions {
-    display: flex;
-    gap: 0.4rem;
-    flex: none;
   }
 </style>
