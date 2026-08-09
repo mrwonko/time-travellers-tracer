@@ -13,6 +13,9 @@
   // at the handoff — plus one multi-event moment (the Handler witnesses
   // the handoff and the depot fire together, as a single simultaneous
   // moment) to demonstrate that a Moment isn't always exactly one event.
+  // Voss also has a second, unmerged sequence — a moment recorded from a
+  // separate account before it was clear where it falls relative to their
+  // other moments (spec §2/§3) — to demonstrate multi-sequence observers.
   const primeId = generateId();
 
   let universes = $state<StoryUniverse[]>([{ id: primeId, label: 'Prime' }]);
@@ -31,18 +34,32 @@
     {
       id: generateId(),
       name: 'K. Voss',
-      sequence: [
-        { id: generateId(), events: [e1], direction: 'forward' },
-        { id: generateId(), events: [e2], direction: 'forward' },
-        { id: generateId(), events: [e3], direction: 'forward' },
+      sequences: [
+        {
+          id: generateId(),
+          moments: [
+            { id: generateId(), events: [e1], direction: 'forward' },
+            { id: generateId(), events: [e2], direction: 'forward' },
+            { id: generateId(), events: [e3], direction: 'forward' },
+          ],
+        },
+        {
+          id: generateId(),
+          moments: [{ id: generateId(), events: [e3], direction: 'forward' }],
+        },
       ],
     },
     {
       id: generateId(),
       name: 'The Handler',
-      sequence: [
-        { id: generateId(), events: [e3], direction: 'inverted' },
-        { id: generateId(), events: [e2, e1], direction: 'inverted' },
+      sequences: [
+        {
+          id: generateId(),
+          moments: [
+            { id: generateId(), events: [e3], direction: 'inverted' },
+            { id: generateId(), events: [e2, e1], direction: 'inverted' },
+          ],
+        },
       ],
     },
   ]);
