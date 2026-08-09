@@ -137,6 +137,19 @@
     --chamfer-fill: var(--color-bg);
   }
 
+  /* Below 720px, app.css's own .data-table mobile rules zero out each
+     cell's horizontal padding (rows become stacked cards, so the column
+     padding that separated cells side-by-side no longer applies) — the
+     exact padding this block was relying on above. Without its own
+     padding back at that width, moment text and buttons sit flush against
+     the border. Matches the 0.9rem inline padding on .sequence-header
+     below so header and body line up. */
+  @media (max-width: 720px) {
+    :global(.sequence-block) {
+      padding-inline: 0.9rem;
+    }
+  }
+
   .sequence-header {
     display: flex;
     flex-wrap: wrap;
