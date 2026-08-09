@@ -18,10 +18,12 @@ test('dragging an event chip past a sibling reorders them, with no undo toast', 
   const sequence = panel.locator('.sequence-block').first();
   await sequence.waitFor();
 
-  // The add-moment row's combobox defaults to the first event selected;
-  // additionally check a second one so the new moment has two events.
+  // The add-moment row's combobox starts with nothing selected — check two
+  // events so the new moment has both.
   await sequence.locator('.add-moment button.combobox-trigger').click();
-  await sequence.locator('.add-moment .combobox-popover-host').getByLabel('Handoff at the overpass').check();
+  const popover = sequence.locator('.add-moment .combobox-popover-host');
+  await popover.getByLabel('Signal received at the depot').check();
+  await popover.getByLabel('Handoff at the overpass').check();
   await page.keyboard.press('Escape');
   await sequence.locator('.add-moment button[aria-label="Add moment"]').click();
 
