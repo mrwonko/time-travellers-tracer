@@ -125,17 +125,16 @@
      moments table from needing to scroll as early as it otherwise would. */
   :global(.sequence-block) {
     padding: 0.75rem 0 0.9rem;
-  }
-
-  /* A cyan frame (vs. the neutral gray hairline every other bordered box
-     in the editor uses — CollapsiblePanel, ObserverCard's own outer
-     border, etc.) is what visually marks "this box is one of an
-     observer's several sequence fragments" at a glance, distinct from
-     plain layout chrome. Compound selector so it beats chamfer-sm-
-     bordered's own `background` (both are single-class rules otherwise
-     tied on specificity — see ChamferBox.svelte). */
-  :global(.sequence-block.chamfer-sm-bordered) {
-    background: var(--color-accent-secondary);
+    /* Fill with the page's base background rather than the observer
+       panel's own (--color-panel-bg, ChamferBox's default) — a step back
+       in the light/dark elevation direction either way (paper-white vs.
+       pure-white in light mode, near-black vs. panel's slightly-lighter
+       near-black in dark mode) reads as "recessed into the observer card"
+       in both themes, which is what visually marks a sequence fragment as
+       its own kind of thing, without reaching for an off-brand accent
+       hue. --chamfer-fill is ChamferBox's own hook for this (see its
+       `::before`); border itself stays the standard hairline. */
+    --chamfer-fill: var(--color-bg);
   }
 
   .sequence-header {
