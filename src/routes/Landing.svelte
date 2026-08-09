@@ -35,7 +35,7 @@
       </p>
     </section>
 
-    <ChamferBox tag="section" class="orientation">
+    <ChamferBox tag="section" class="landing-orientation">
       <p class="orientation-label mono">ORIENTATION &mdash; READ BEFORE FIRST USE</p>
       <p>
         Standard chronometers assume a single, shared timeline. Yours does
@@ -57,7 +57,7 @@
 
     <section class="capabilities">
       {#each capabilities as cap (cap.index)}
-        <ChamferBox tag="article" size="sm" class="capability">
+        <ChamferBox tag="article" size="sm" class="landing-capability">
           <p class="capability-index mono">{cap.index}</p>
           <h2>{cap.title}</h2>
           <p>{cap.body}</p>
@@ -65,12 +65,12 @@
       {/each}
     </section>
 
-    <ChamferBox tag="section" bordered={false} class="cta-bar">
+    <ChamferBox tag="section" bordered={false} class="landing-cta-bar">
       <p class="advisory">
         Standard causality is a courtesy, not a guarantee. Trace carefully.
       </p>
       <div class="cta-block">
-        <ChamferBox tag="a" size="sm" bordered={false} class="cta" href="#/editor">Open your Tracer</ChamferBox>
+        <ChamferBox tag="a" size="sm" bordered={false} class="landing-cta" href="#/editor">Open your Tracer</ChamferBox>
       </div>
     </ChamferBox>
   </main>
@@ -119,8 +119,13 @@
   /* :global() here because the class is passed through to ChamferBox's
      own rendered element, not applied to an element literally present in
      this component's template — Svelte's scoping hash wouldn't match it
-     otherwise. */
-  :global(.orientation) {
+     otherwise. That also means these class names land in the page's
+     genuinely global namespace (not Svelte-scoped to this file), so
+     they're prefixed with "landing-" to avoid colliding with an
+     unrelated global class of the same short name elsewhere — unlike a
+     plain scoped selector, a clash here wouldn't be caught by anything
+     at build time. */
+  :global(.landing-orientation) {
     padding: 1.75rem 2rem;
     display: flex;
     flex-direction: column;
@@ -135,7 +140,7 @@
     margin: 0 0 0.25rem;
   }
 
-  :global(.orientation) em {
+  :global(.landing-orientation) em {
     font-style: normal;
     color: var(--color-accent-ink);
     font-weight: 600;
@@ -148,7 +153,7 @@
     margin-bottom: 2.5rem;
   }
 
-  :global(.capability) {
+  :global(.landing-capability) {
     padding: 1.5rem;
   }
 
@@ -158,17 +163,17 @@
     margin: 0 0 0.75rem;
   }
 
-  :global(.capability) h2 {
+  :global(.landing-capability) h2 {
     font-size: 1.05rem;
     margin: 0 0 0.5rem;
   }
 
-  :global(.capability) p:not(.capability-index) {
+  :global(.landing-capability) p:not(.capability-index) {
     opacity: 0.8;
     font-size: 0.95rem;
   }
 
-  :global(.cta-bar) {
+  :global(.landing-cta-bar) {
     background: var(--color-ink);
     color: var(--color-paper);
     padding: 1.75rem 2rem;
@@ -191,7 +196,7 @@
     gap: 0.5rem;
   }
 
-  :global(.cta) {
+  :global(.landing-cta) {
     display: inline-block;
     background: var(--color-accent);
     color: var(--color-ink);
@@ -203,13 +208,13 @@
     transition: opacity var(--duration-fast) var(--ease-standard);
   }
 
-  :global(.cta):hover,
-  :global(.cta):focus-visible {
+  :global(.landing-cta):hover,
+  :global(.landing-cta):focus-visible {
     opacity: 0.85;
   }
 
   @media (max-width: 30rem) {
-    :global(.cta-bar) {
+    :global(.landing-cta-bar) {
       flex-direction: column;
       align-items: flex-start;
     }
@@ -219,7 +224,7 @@
       width: 100%;
     }
 
-    :global(.cta) {
+    :global(.landing-cta) {
       width: 100%;
       text-align: center;
     }

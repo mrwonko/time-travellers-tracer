@@ -10,7 +10,7 @@
 
 <header class="bar" style="--page-header-px: {paddingX}">
   <div class="wordmark">
-    <ChamferBox tag="span" size="sm" bordered={false} class="mark" aria-hidden="true" />
+    <ChamferBox tag="span" size="sm" bordered={false} class="page-header-mark" aria-hidden="true" />
     <span class="wordmark-text">TIME TRAVELLER'S TRACER</span>
   </div>
   <span class="tag mono">{tag}</span>
@@ -33,7 +33,11 @@
     gap: 0.6rem;
   }
 
-  :global(.mark) {
+  /* :global() because the class is passed through to ChamferBox's own
+     rendered element — genuinely global (not Svelte-scoped), hence the
+     "page-header-" prefix to avoid an un-checked clash with an unrelated
+     global class elsewhere. */
+  :global(.page-header-mark) {
     width: 1.1rem;
     height: 1.1rem;
     background: var(--color-accent);
