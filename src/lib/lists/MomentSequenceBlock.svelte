@@ -3,7 +3,7 @@
   // have several, since a moment's position relative to that observer's
   // *other* moments isn't always known yet at recording time). Owns its
   // own "add moment" draft state and its own merge-target selection —
-  // deliberately not lifted to ObserverCard, for the same reason MomentRow
+  // deliberately not lifted to ObserverCard, for the same reason MomentBox
   // keeps its own edit state: multiple blocks can be mid-interaction at
   // once without stomping each other.
   import { generateId } from '../id';
@@ -12,7 +12,7 @@
   import DirectionToggle from '../DirectionToggle.svelte';
   import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import ChamferBox from '../ChamferBox.svelte';
-  import MomentRow from './MomentRow.svelte';
+  import MomentBox from './MomentBox.svelte';
   import type { MomentSequence, Moment, SequenceID } from '../types';
 
   let {
@@ -81,50 +81,35 @@
     </div>
   </div>
 
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Event</th>
-        <th>Direction</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each sequence.moments as moment, i (moment.id)}
-        <MomentRow
-          {moment}
-          index={i + 1}
-          {eventOptions}
-          {eventLabel}
-          onSave={(patch) => onSaveMoment(moment.id, patch)}
-          onDelete={() => onDeleteMoment(moment.id)}
-        />
-      {/each}
-      <tr class="add-row">
-        <td></td>
-        <td>
-          <MultiSelectCombobox options={eventOptions} bind:selected={newMomentEvents} placeholder="Events…" />
-        </td>
-        <td>
-          <DirectionToggle bind:direction={newMomentDirection} />
-        </td>
-        <td class="actions">
-          <IconButton icon="plus" label="Add moment" variant="accent" size="sm" onclick={addMoment} />
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="moments">
+    {#each sequence.moments as moment, i (moment.id)}
+      <MomentBox
+        {moment}
+        index={i + 1}
+        {eventOptions}
+        {eventLabel}
+        onSave={(patch) => onSaveMoment(moment.id, patch)}
+        onDelete={() => onDeleteMoment(moment.id)}
+      />
+    {/each}
+  </div>
+
+  <div class="add-moment">
+    <MultiSelectCombobox options={eventOptions} bind:selected={newMomentEvents} placeholder="Events…" />
+    <DirectionToggle bind:direction={newMomentDirection} />
+    <IconButton icon="plus" label="Add moment" variant="accent" size="sm" onclick={addMoment} />
+  </div>
 </ChamferBox>
 
 <style>
-  /* No side padding — the table's own cell padding already insets its
-     content, and this block is often the narrowest thing on the page (the
-     editor's right-hand column, further indented as a sequence within an
-     observer); reclaiming the extra wrapper padding is what keeps the
-     moments table from needing to scroll as early as it otherwise would. */
   :global(.sequence-block) {
-    padding: 0.75rem 0 0.9rem;
+    /* Uniform inline padding at every width now that moments are their own
+       boxes rather than table rows — the old version relied on the
+       moments table's own per-cell padding at desktop widths (only adding
+       its own padding-inline back below 720px, where app.css's mobile
+       .data-table rules zeroed that out). A box list has no such built-in
+       inset to borrow, so this block insets itself unconditionally. */
+    padding: 0.75rem 0.9rem 0.9rem;
     /* Fill with the page's base background rather than the observer
        panel's own (--color-panel-bg, ChamferBox's default) — a step back
        in the light/dark elevation direction either way (paper-white vs.
@@ -137,26 +122,12 @@
     --chamfer-fill: var(--color-bg);
   }
 
-  /* Below 720px, app.css's own .data-table mobile rules zero out each
-     cell's horizontal padding (rows become stacked cards, so the column
-     padding that separated cells side-by-side no longer applies) — the
-     exact padding this block was relying on above. Without its own
-     padding back at that width, moment text and buttons sit flush against
-     the border. Matches the 0.9rem inline padding on .sequence-header
-     below so header and body line up. */
-  @media (max-width: 720px) {
-    :global(.sequence-block) {
-      padding-inline: 0.9rem;
-    }
-  }
-
   .sequence-header {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.6rem;
     margin-bottom: 0.6rem;
-    padding: 0 0.9rem;
   }
 
   .sequence-label {
@@ -182,9 +153,17 @@
     padding: 0.3rem 0.4rem;
   }
 
-  .actions {
+  .moments {
     display: flex;
-    gap: 0.4rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .add-moment {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     flex-wrap: wrap;
+    margin-top: 0.6rem;
   }
 </style>
