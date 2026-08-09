@@ -27,8 +27,16 @@ implementation. It's self-contained — no other context should be needed.
   event which is the cause of that future event). A cycle is not itself a
   problem — see §5 on satisfiability.
 - **Observer** — a character (or, optionally, the "world"/background
-  timeline treated as just another observer — see §6). Has an ordered
-  sequence of **moments**.
+  timeline treated as just another observer — see §6). Has one or more
+  **sequences**, each an ordered run of **moments**. Multiple sequences
+  exist because authoring doesn't always reveal an observer's full order up
+  front: a moment can be recorded for an observer without yet knowing where
+  it falls relative to that observer's *other* recorded moments (e.g. two
+  scenes transcribed from different parts of the source material, both
+  featuring the same character, before their relative order is known). Each
+  sequence is internally ordered; the relative order *between* an observer's
+  different sequences is simply unknown until the author merges them into
+  one. See §3 for the merge operation itself.
 - **Moment** — one step in an observer's personal experience. A moment is a
   *set* of event IDs (usually one, but can be more than one to represent
   events the observer experiences as simultaneous). A moment also has a
@@ -67,8 +75,18 @@ Event {
 Observer {
   id: ObserverID                // UUID
   name?: string
-  sequence: Moment[]            // ordered — this order IS the observer's
-                                 // personal/subjective experienced order
+  sequences: MomentSequence[]   // one or more fragments of this observer's
+                                 // personal/subjective experienced order —
+                                 // see §2. Relative order *between*
+                                 // sequences is unknown; merge (below) is
+                                 // how two become one.
+}
+
+MomentSequence {
+  id: SequenceID                 // UUID
+  moments: Moment[]              // ordered — this order IS the observer's
+                                  // personal/subjective experienced order
+                                  // for this fragment
 }
 
 Moment {
@@ -84,18 +102,30 @@ Universe {
 }
 ```
 
-`EventID`, `ObserverID`, `UniverseID`, and `MomentID` are all UUIDs. The
-reason isn't (only) that they're referenced by ID from elsewhere — it's that
-the `Story` document itself (§10) is expected to be **forked and later
-reconciled**: two people (or one person on two branches) independently
-editing copies of the same `Story`, then merging their edits back together.
-Positional addressing (array index) doesn't survive that — if one fork
-inserts a moment mid-sequence and the other reorders the same sequence, indices
-no longer line up, and a merge tool can't tell "same moment, edited" from
-"unrelated new moment" without a stable ID. This applies just as much to
-`Moment` (an element of `Observer.sequence`) as to the top-level entities,
-which is why it gets an `id` too, not just positional `momentIndex`
-addressing.
+`EventID`, `ObserverID`, `UniverseID`, `MomentID`, and `SequenceID` are all
+UUIDs. The reason isn't (only) that they're referenced by ID from
+elsewhere — it's that the `Story` document itself (§10) is expected to be
+**forked and later reconciled**: two people (or one person on two
+branches) independently editing copies of the same `Story`, then merging
+their edits back together. Positional addressing (array index) doesn't
+survive that — if one fork inserts a moment mid-sequence and the other
+reorders the same sequence, indices no longer line up, and a merge tool
+can't tell "same moment, edited" from "unrelated new moment" without a
+stable ID. This applies just as much to `Moment` (an element of a
+`MomentSequence`) and to `MomentSequence` itself (an element of
+`Observer.sequences`) as to the top-level entities, which is why both get
+an `id`, not just positional index addressing.
+
+**Merging two of an observer's sequences** (§2) is an ordinary edit to the
+`Story` document, not a distinct operation with its own schema: once the
+author learns how two sequence fragments relate, they combine them into
+one `MomentSequence` (concatenating one fragment's `moments` after the
+other's) and discard the now-empty fragment. Working out a more precise
+*interleaving* of two fragments' moments (as opposed to one fragment
+wholesale before/after the other), or splitting one fragment back into two,
+or reordering moments within a fragment, are editor-UI conveniences for
+fixing authoring mistakes — not modeled here, since they don't change what
+can be *represented*, only how comfortably the author arrives at it.
 
 *Terminology note*: this "fork a `Story`, reconcile later" concept is
 **unrelated** to the in-narrative Universe fork/merge concept in §4 — same
@@ -119,16 +149,19 @@ case.
 Important properties of this model:
 
 - `direction` is not an intrinsic property of a moment in isolation — it
-  describes the traversal *into* that moment from the previous one in the
-  observer's sequence (i.e. it's really a property of the step/edge between
-  consecutive moments, just encoded on the later endpoint for convenience).
-  A moment's `direction` is meaningless without the moment before it; the
-  first moment in a sequence has no incoming step, so its `direction` value
-  is unconstrained/ignored. See §5.3 for how this is used.
+  describes the traversal *into* that moment from the previous one in its
+  sequence (i.e. it's really a property of the step/edge between consecutive
+  moments, just encoded on the later endpoint for convenience). A moment's
+  `direction` is meaningless without the moment before it; the first moment
+  of *each* sequence has no incoming step (there's no defined step between
+  two different sequences of the same observer — that's the whole point of
+  them being separate), so its `direction` value is unconstrained/ignored.
+  See §5.3 for how this is used.
 - The **same EventID can appear more than once** across an observer's
-  sequence (an observer can witness the same event twice — e.g. watching
-  their own past/future self). This is just a repeat in the list; no special
-  field needed.
+  moments — whether within one sequence or across several of that
+  observer's sequences (an observer can witness the same event twice —
+  e.g. watching their own past/future self). This is just a repeat; no
+  special field needed.
 - Different observers reference the same `EventID` to represent that they
   were both present — this is the *only* way co-presence is represented.
 
@@ -141,7 +174,8 @@ computed by scanning all observers' moments for that event ID:
 participants(e) = [
   (observer, moment.id)
   for observer in allObservers
-  for moment in observer.sequence
+  for sequence in observer.sequences
+  for moment in sequence.moments
   if e in moment.events
 ]
 ```
@@ -150,7 +184,11 @@ Returns `moment.id`, not positional index — the index is fragile under
 document forking/reconciliation (see §3), while the moment's own ID stays
 stable. Positional order within a sequence, when actually needed (e.g. for
 rendering), is always trivially derivable by locating that `moment.id`
-within its observer's `sequence` array.
+within the `moments` array of whichever of the observer's `sequences`
+contains it. This query itself doesn't care which sequence a moment lives
+in, or how an observer's several sequences relate to each other — meeting
+detection only needs "did this observer ever witness this event," not that
+observer's full order.
 
 This must account for multiplicity: if one observer's sequence references
 the same event twice, that observer should appear twice in the result (as
@@ -244,9 +282,11 @@ how each observer got there and will leave.
 There is no privileged global/absolute order in the model. If a canonical
 reference ordering is useful for the chart (e.g. a stable default Y-axis),
 it should be represented as an ordinary `Observer` (e.g. `id: "world"`)
-whose sequence happens to be a full forward linearization of everything —
-not as a special field on `Event`. Any observer can be chosen as the chart's
-reference axis, not just this one.
+with a single sequence that happens to be a full forward linearization of
+everything — not as a special field on `Event`. Any observer can be chosen
+as the chart's reference axis, not just this one — though per item 9 in
+§8, an observer must actually have all their moments merged into that one
+sequence before they can serve as the reference axis.
 
 ## 7. Visualization approach (decided direction)
 
@@ -262,7 +302,8 @@ reference axis, not just this one.
   arrows connecting an observer's own moments in sequence (not via
   geometric position, since a jump can move opposite to the reference
   observer's order). Arrow direction should visually flip for `"inverted"`
-  segments (§5.3).
+  segments (§5.3). This assumes one sequence per observer; see item 9 in
+  §8 for the not-yet-merged case.
 - Self-loops (same observer witnessing the same event twice) render as a
   loop back into the same lane rather than a cross-lane connector.
 - Spacing should be **schematic** (order-based, like a real subway map),
@@ -306,6 +347,17 @@ exploration, not the primary direction):
    indicate universe boundaries and fork/merge points, now that they're
    defined (§4)? E.g. color-per-universe, separate lane groupings, explicit
    fork/merge glyphs at those events. Not yet decided.
+9. **Rendering an observer with unmerged sequences.** *(new)* §7's lane
+   layout (Y-position for the reference observer, in-lane arrows for every
+   observer) assumes one total order per observer. Since §3 now allows an
+   observer to have several sequences whose relative order is unknown until
+   merged, what does the chart do with one mid-authoring, before all its
+   sequences are merged into one? Options include: refusing to use such an
+   observer as the reference axis (already noted in §6) while still
+   rendering its lane some other way (e.g. one visually distinct sub-lane
+   per sequence); flagging it as incomplete and excluding it from the chart
+   until merged; or something else. Not yet decided — purely a
+   graph-rendering concern, deferred along with the rest of Phase 2.
 
 ## 9. Non-goals for this pass
 
