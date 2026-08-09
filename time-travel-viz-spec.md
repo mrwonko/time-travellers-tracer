@@ -119,13 +119,15 @@ an `id`, not just positional index addressing.
 **Merging two of an observer's sequences** (§2) is an ordinary edit to the
 `Story` document, not a distinct operation with its own schema: once the
 author learns how two sequence fragments relate, they combine them into
-one `MomentSequence` (concatenating one fragment's `moments` after the
-other's) and discard the now-empty fragment. Working out a more precise
-*interleaving* of two fragments' moments (as opposed to one fragment
-wholesale before/after the other), or splitting one fragment back into two,
-or reordering moments within a fragment, are editor-UI conveniences for
-fixing authoring mistakes — not modeled here, since they don't change what
-can be *represented*, only how comfortably the author arrives at it.
+one `MomentSequence` (splicing one fragment's `moments` into the other's
+at a specific position — not just concatenated wholesale) and discard the
+now-empty fragment. The editor exposes this as drag-and-drop: dragging one
+sequence fragment and dropping it between two moments of another splices
+it in at that position, and moments within a single fragment can likewise
+be drag-reordered. Splitting one fragment back into two remains an
+editor-UI convenience for fixing authoring mistakes, not modeled/built —
+it doesn't change what can be *represented*, only how comfortably the
+author arrives at it.
 
 *Terminology note*: this "fork a `Story`, reconcile later" concept is
 **unrelated** to the in-narrative Universe fork/merge concept in §4 — same
@@ -358,6 +360,14 @@ exploration, not the primary direction):
    per sequence); flagging it as incomplete and excluding it from the chart
    until merged; or something else. Not yet decided — purely a
    graph-rendering concern, deferred along with the rest of Phase 2.
+10. **Keyboard-operable drag-and-drop.** *(new)* The editor's sequence/
+    moment/event reordering and merge-splice (§3) is currently
+    pointer/touch-only (`src/lib/dnd/actions.ts`) — in tension with
+    `design-language.md`'s "keyboard-first" editor principle, deliberately
+    deferred rather than silently dropped. Future direction: a focused
+    drag-target becomes keyboard-activatable, giving a keyboard "cursor"
+    that can move up/down within its own nesting level and left to jump to
+    the parent level. Not designed in detail yet.
 
 ## 9. Non-goals for this pass
 
