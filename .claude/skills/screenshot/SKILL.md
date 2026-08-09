@@ -1,6 +1,6 @@
 ---
 name: screenshot
-description: Take a screenshot of a running page (this app's dev server, or any URL) via Playwright, with console-error and failed-request reporting, and an optional bounded sequence of click/fill/press actions first. Use this instead of writing a fresh ad hoc .mjs Playwright script each time — it's a fixed, parameterized tool so it can be permanently allowed rather than approved per invocation.
+description: Take a screenshot of a running page (this app's dev server, or any URL) via Playwright, with console-error and failed-request reporting, and an optional bounded sequence of click/fill/press/drag/tap actions first. Use this instead of writing a fresh ad hoc .mjs Playwright script each time — it's a fixed, parameterized tool so it can be permanently allowed rather than approved per invocation.
 ---
 
 # Screenshot
@@ -12,6 +12,11 @@ time:
 node .claude/skills/screenshot/screenshot.mjs --url <url> --out <path.png> [options]
 ```
 
+Kept deliberately narrow — flags for one-off investigations get removed
+once their job is done (see the script's own header comment) rather than
+accumulating forever. If you need something not listed here, prefer a
+one-off script for that specific investigation over growing this file.
+
 Options:
 - `--width N` / `--height N` — viewport size (default 1280x900)
 - `--wait-for <selector>` — wait for a selector (e.g. `text=Events`) right
@@ -20,21 +25,40 @@ Options:
   whole page
 - `--no-full-page` — capture only the viewport instead of the full
   scrollable page
-- `--stub-no-random-uuid` — deletes `window.crypto.randomUUID` before page
-  scripts run, to reproduce the insecure-context/LAN-IP phone bug (see
-  `src/lib/id.ts`) deterministically instead of trusting the theory
+- `--touch` — enable real touch input (Playwright `hasTouch` context)
+  instead of mouse. Required for `--tap`/`--touch-drag` to dispatch
+  genuine touch events (via CDP `Input.dispatchTouchEvent`), not mouse
+  events with a touch label — needed because a native `click` only gets
+  tap-vs-drag suppression for touch input, not mouse (a mouse `click`
+  fires regardless of drag distance).
 
 Actions — repeatable, executed **in the order given on the command line**,
 after navigation/`--wait-for` and before the final screenshot:
-- `--click <selector>`
+- `--click <selector>` — mouse click
+- `--tap <selector>` — touch tap (needs `--touch`)
 - `--fill '<selector>::<value>'`
 - `--press '<selector>::<Key>'` (e.g. `'input.field::Enter'`)
 - `--wait-after <selector>` — wait for a selector to appear mid-sequence
   (e.g. after a click reveals something)
 - `--resize <W>x<H>` — resize the viewport mid-test, e.g. to simulate a
   mobile on-screen keyboard shrinking available vertical space
+- `--scroll-to <selector>` — `scrollIntoView` an element. Needed before
+  `--tap`, which (unlike Playwright's `.click()`) does not auto-scroll
+  the target into view.
+- `--drag '<from>::<to>'` — mouse drag between two selectors (real
+  pointerdown → gradual move → pointerup, so it reads as a drag/scroll
+  gesture rather than a tap)
+- `--touch-drag '<from>::<to>'` — real touch swipe between two selectors
+  (needs `--touch`). This is what actually exercises a browser-recognized
+  scroll gesture, which can fire `pointercancel` instead of `pointerup`;
+  a mouse drag never does, so `--drag` can't stand in for it when that
+  distinction matters.
 
 Selectors are Playwright selectors (CSS, or `text=...`, `role=...`, etc.).
+Scope selectors precisely when a page has repeated structures (e.g.
+`'tr:has-text("X") button[aria-label="Y"]'` or `'.data-table >> nth=0 >>
+tbody tr:nth-child(1) ...'`) — an ambiguous selector matching multiple
+elements is the most common cause of a hung/timed-out action here.
 
 Prints a JSON summary (`consoleErrors`, `failedRequests`) to stdout after
 saving the image — check that before assuming a screenshot "looks right"
@@ -49,6 +73,18 @@ node .claude/skills/screenshot/screenshot.mjs \
   --click 'button[aria-label="Add universe"]' \
   --wait-after 'text=Backup' \
   --out /tmp/after-add.png
+```
+
+Example — real touch tap on an off-screen element (scroll first, `--tap`
+doesn't auto-scroll like `.click()` does):
+```
+node .claude/skills/screenshot/screenshot.mjs \
+  --url "http://localhost:8080/#/components" --touch \
+  --wait-for "text=MultiSelectCombobox" \
+  --scroll-to '.combobox-trigger' \
+  --tap '.combobox-trigger' \
+  --wait-after '.combobox-popover-host' \
+  --out /tmp/combobox-open.png
 ```
 
 Requires the dev server already running (see the `dev-server` skill) if

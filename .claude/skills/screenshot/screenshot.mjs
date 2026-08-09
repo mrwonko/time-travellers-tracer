@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 // Fixed-purpose screenshot/interaction tool — parameterized by CLI flags,
 // not hand-written per invocation. Supports a small bounded set of
-// pre-screenshot actions (click/fill/press/wait) executed in the order
-// given, plus optionally stubbing crypto.randomUUID away to reproduce the
-// insecure-context phone bug. Also reports console errors and any
-// failed/4xx+/5xx network requests, since that's usually what a
-// screenshot check is actually verifying.
+// pre-screenshot actions (click/fill/press/drag/tap/...) executed in the
+// order given. Also reports console errors and any failed/4xx+/5xx
+// network requests, since that's usually what a screenshot check is
+// actually verifying.
+//
+// Kept deliberately narrow: flags for one-off investigations (e.g. the
+// old --stub-no-random-uuid phone-bug repro, --dispatch-resize for a now
+// -removed JS-computed popover position) have been removed once their
+// job was done, rather than accumulating permanently. If you need one of
+// those again, write a one-off script for that specific investigation —
+// don't grow this file back into a general-purpose Playwright wrapper.
 import { chromium } from 'playwright';
 
 function splitPair(raw) {
@@ -28,8 +34,6 @@ function parseArgs(argv) {
       args.fullPage = false;
     } else if (a === '--no-full-page') {
       args.fullPage = false;
-    } else if (a === '--stub-no-random-uuid') {
-      args.stubNoRandomUuid = true;
     } else if (a === '--touch') {
       args.touch = true;
     } else if (a === '--tap') {
@@ -50,10 +54,6 @@ function parseArgs(argv) {
     } else if (a === '--resize') {
       const [w, h] = argv[++i].split('x').map(Number);
       args.actions.push({ type: 'resize', width: w, height: h });
-    } else if (a === '--pause') {
-      args.actions.push({ type: 'pause', ms: Number(argv[++i]) });
-    } else if (a === '--dispatch-resize') {
-      args.actions.push({ type: 'dispatch-resize' });
     } else if (a === '--scroll-to') {
       args.actions.push({ type: 'scroll-to', selector: argv[++i] });
     } else if (a === '--drag') {
@@ -77,28 +77,35 @@ if (args.help || !args.url || !args.out) {
       '  --width N              viewport width (default 1280)',
       '  --height N             viewport height (default 900)',
       '  --wait-for <sel>       wait for a selector before doing anything else',
-      '  --selector <sel>       screenshot only this element instead of the full page',
-      '  --no-full-page         capture only the viewport, not the full scrollable page',
-      '  --stub-no-random-uuid  delete window.crypto.randomUUID before page scripts run',
-      '                         (reproduces the insecure-context/LAN-IP phone bug)',
-      '  --touch                enable real touch input (hasTouch context) instead of',
-      '                         mouse — required for --tap/--touch-drag to dispatch',
-      '                         genuine touch events, not mouse events with a touch label',
+      '  --selector <sel>       screenshot only this element instead of the',
+      '                         full page',
+      '  --no-full-page         capture only the viewport, not the full',
+      '                         scrollable page',
+      '  --touch                enable real touch input (hasTouch context)',
+      '                         instead of mouse — required for --tap/',
+      '                         --touch-drag to dispatch genuine touch',
+      '                         events, not mouse events with a touch label',
       '',
       'Actions (repeatable, executed in the order given, before the screenshot):',
       '  --click <selector>     mouse click',
       '  --tap <selector>       touch tap (needs --touch)',
       "  --fill '<selector>::<value>'",
-      "  --press '<selector>::<Key>'",
-      '  --wait-after <selector>',
-      "  --resize <W>x<H>       resize the viewport mid-test (e.g. simulating",
-      '                         a mobile on-screen keyboard shrinking it)',
+      "  --press '<selector>::<Key>'  (e.g. 'input.field::Enter')",
+      '  --wait-after <selector>      wait for a selector mid-sequence',
+      "  --resize <W>x<H>       resize the viewport mid-test, e.g. to",
+      '                         simulate a mobile on-screen keyboard',
+      '                         shrinking available vertical space',
+      '  --scroll-to <selector> scrollIntoView an element — needed before',
+      '                         --tap, which (unlike Playwright\'s .click())',
+      '                         does not auto-scroll the target into view',
       "  --drag '<from>::<to>'        mouse drag between two selectors",
-      "  --touch-drag '<from>::<to>'  real touch swipe between two selectors (needs",
-      '                               --touch) — this is what actually exercises',
-      '                               a browser-recognized scroll gesture, which can',
-      '                               fire pointercancel instead of pointerup; a mouse',
-      '                               drag never does, so --drag can\'t stand in for it',
+      "  --touch-drag '<from>::<to>'  real touch swipe between two selectors",
+      '                               (needs --touch) — this is what',
+      '                               actually exercises a browser-',
+      '                               recognized scroll gesture, which can',
+      '                               fire pointercancel instead of',
+      '                               pointerup; a mouse drag never does,',
+      "                               so --drag can't stand in for it",
     ].join('\n'),
   );
   process.exit(args.help ? 0 : 1);
@@ -119,14 +126,6 @@ async function dispatchTouch(type, x, y) {
   await cdp.send('Input.dispatchTouchEvent', {
     type,
     touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
-  });
-}
-
-if (args.stubNoRandomUuid) {
-  await page.addInitScript(() => {
-    // @ts-ignore — intentionally deleting a browser API to simulate an
-    // insecure context, where crypto.randomUUID is undefined.
-    delete window.crypto.randomUUID;
   });
 }
 
@@ -155,12 +154,6 @@ for (const action of args.actions) {
   else if (action.type === 'press') await page.locator(action.selector).press(action.key);
   else if (action.type === 'wait') await page.waitForSelector(action.selector);
   else if (action.type === 'resize') await page.setViewportSize({ width: action.width, height: action.height });
-  else if (action.type === 'pause') await page.waitForTimeout(action.ms);
-  else if (action.type === 'dispatch-resize')
-    await page.evaluate(() => {
-      window.dispatchEvent(new Event('resize'));
-      window.visualViewport?.dispatchEvent(new Event('resize'));
-    });
   else if (action.type === 'scroll-to')
     await page.locator(action.selector).evaluate((el) => el.scrollIntoView({ block: 'center' }));
   else if (action.type === 'drag') {
