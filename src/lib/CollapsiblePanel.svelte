@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte';
   import Icon from './Icon.svelte';
   import { chamferClass } from './ChamferBox.svelte';
+  import { autoScrollContainer } from './dnd/actions';
 
   let {
     title,
@@ -66,7 +67,7 @@
       </span>
     {/if}
   </summary>
-  <div class="panel-body">
+  <div class="panel-body" use:autoScrollContainer={capHeight}>
     {@render children()}
   </div>
 </details>
