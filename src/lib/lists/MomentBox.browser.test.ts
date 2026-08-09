@@ -38,6 +38,8 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
+        onInsertEventBefore: () => {},
+        onAddEvent: () => {},
       },
     });
 
@@ -65,6 +67,8 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
+        onInsertEventBefore: () => {},
+        onAddEvent: () => {},
       },
     });
 
@@ -94,6 +98,8 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
+        onInsertEventBefore: () => {},
+        onAddEvent: () => {},
       },
     });
 
@@ -120,6 +126,8 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
+        onInsertEventBefore: () => {},
+        onAddEvent: () => {},
       },
     });
 
@@ -142,6 +150,8 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
+        onInsertEventBefore: () => {},
+        onAddEvent: () => {},
       },
     });
     const boxB = await render(MomentBox, {
@@ -158,6 +168,8 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
+        onInsertEventBefore: () => {},
+        onAddEvent: () => {},
       },
     });
 
@@ -183,6 +195,8 @@ describe('MomentBox', () => {
         onMergeInto: () => {},
         onHoverChange: () => {},
         onReorderEvents: () => {},
+        onInsertEventBefore: () => {},
+        onAddEvent: () => {},
       },
     });
 

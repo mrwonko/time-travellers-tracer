@@ -2,6 +2,7 @@
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';
   import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
+  import DragHandle from '../dnd/DragHandle.svelte';
   import type { StoryEvent, StoryUniverse } from '../types';
 
   // Row-scoped edit state (not a list-level `editingId`) is what lets
@@ -65,7 +66,7 @@
   }
 </script>
 
-<tr>
+<tr data-drag-box>
   {#if editing}
     <td>
       <input type="text" class="field" bind:value={editLabel} onkeydown={(e) => e.key === 'Enter' && save()} />
@@ -94,7 +95,13 @@
       <IconButton icon="x" label="Cancel edit" onclick={cancel} />
     </td>
   {:else}
-    <td>{event.label} <UuidTag id={event.id} /></td>
+    <td>
+      <DragHandle
+        label={`Drag "${event.label}" onto a moment or sequence`}
+        data={() => ({ level: 'storyEvent', id: event.id })}
+      />
+      {event.label} <UuidTag id={event.id} />
+    </td>
     <td>
       {#if event.description}
         {event.description}

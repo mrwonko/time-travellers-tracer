@@ -47,6 +47,8 @@
     onMergeInto,
     onReorderEvents,
     onHoverChange,
+    onInsertEventBefore,
+    onAddEvent,
   }: {
     moment: Moment;
     index: number;
@@ -60,6 +62,13 @@
     onMergeInto: (sourceSequenceId: SequenceID, targetMomentId: MomentID, edge: Edge) => void;
     onReorderEvents: (draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
     onHoverChange: (edge: Edge | null) => void;
+    // storyEvent dropped on this moment's header -> insert a new moment
+    // right before this one; dropped on its body -> add the event to this
+    // moment. Two separate sibling drop targets rather than one nested
+    // inside the other — see the top-of-file comment and canDropStoryEvent
+    // below for why nesting doesn't work with Pragmatic DnD here.
+    onInsertEventBefore: (eventId: EventID) => void;
+    onAddEvent: (eventId: EventID) => void;
   } = $props();
 
   const dragData: DragBoxData = $derived({ level: 'moment', id: moment.id, containerId: sequenceId });
@@ -86,9 +95,32 @@
     }
   }
 
+  // .moment-header and .moment-body are their own sibling drop targets for
+  // a storyEvent drag (not nested inside .moment-drag-box's own target
+  // above): Pragmatic DnD's hit-testing walks the whole ancestor chain and
+  // fires onDrop on every target whose canDrop returned true, so a nested
+  // target accepting the same source level as its parent would double-fire
+  // (both "insert a new moment" and "add to this moment" on the same
+  // drop). Keeping them plain siblings — the same rule this file's parent,
+  // MomentSequenceBlock, already documents for its own header/trailing
+  // regions — means at most one of them ever accepts a given drag.
+  function canDropStoryEvent(source: DragBoxData): boolean {
+    return source.level === 'storyEvent';
+  }
+
+  // While editing, editEvents is an in-progress draft that save() writes
+  // back to moment.events wholesale — a drop landing directly in
+  // moment.events during that window would be silently discarded on save.
+  function canDropIntoBody(source: DragBoxData): boolean {
+    return !editing && canDropStoryEvent(source);
+  }
+
+  let bodyHovered = $state(false);
+
   let editing = $state(false);
   let editEvents = $state<string[]>([]);
   let editDirection = $state<'forward' | 'inverted'>('forward');
+  let isBodyPotentialTarget = $derived(!editing && getDragging()?.level === 'storyEvent');
 
   function startEdit() {
     editEvents = [...moment.events];
@@ -156,7 +188,15 @@
   use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange }}
 >
   <ChamferBox size="sm" class="moment-box">
-    <div class="moment-header">
+    <div
+      class="moment-header"
+      use:dropBox={{
+        data: () => dragData,
+        canDrop: canDropStoryEvent,
+        onDrop: (source) => onInsertEventBefore(source.id),
+        onHoverChange: (edge) => onHoverChange(edge !== null ? 'top' : null),
+      }}
+    >
       <DragHandle label="Drag to reorder moment" data={() => dragData} />
       <span class="moment-index mono">#{index}</span>
       {#if !editing}
@@ -173,7 +213,17 @@
         {/if}
       </div>
     </div>
-    <div class="moment-body">
+    <div
+      class="moment-body"
+      class:potential-target={isBodyPotentialTarget}
+      class:hovered={bodyHovered}
+      use:dropBox={{
+        data: () => dragData,
+        canDrop: canDropIntoBody,
+        onDrop: (source) => onAddEvent(source.id),
+        onHoverChange: (edge) => (bodyHovered = edge !== null),
+      }}
+    >
       {#if editing}
         <MultiSelectCombobox options={eventOptions} bind:selected={editEvents} placeholder="Events…" />
         <DirectionToggle bind:direction={editDirection} />
@@ -257,6 +307,26 @@
     align-items: center;
     gap: 0.6rem;
     flex-wrap: wrap;
+    /* Outline, not border: it occupies no layout box, so the moment
+       doesn't shift by a pixel when a drag starts — the same no-layout-
+       shift rule the fixed-size .event-gap/.moment-gap strips exist to
+       honour. */
+    outline: var(--border-width) dashed transparent;
+    outline-offset: 2px;
+  }
+
+  /* Same subtle-dashed -> bright-solid progression as .moments-empty in
+     MomentSequenceBlock and the DropIndicatorLine gap lines: dashed = "an
+     event could be added to this moment", solid = "this is the moment
+     under the pointer right now". No transition (editor surfaces are
+     near-zero-motion). */
+  .moment-body.potential-target {
+    outline-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .moment-body.hovered {
+    outline-style: solid;
+    outline-color: var(--color-accent);
   }
 
   .moment-events {

@@ -225,6 +225,51 @@
       observer.sequences = before;
     });
   }
+
+  // Wraps a raw event id in a brand-new single-event Moment and splices it
+  // into `seqId` at `index` — 0 = front, moments.length = end, i = "before
+  // moment i". One function for all three positions (front/between/end):
+  // they're all the same splice, just at a different index computed by
+  // whoever actually knows the array (MomentSequenceBlock). Undo for the
+  // same reason reorderMoments has it: moment order inside a sequence is
+  // spec-meaningful, and a misdropped drag is far likelier than a
+  // mis-clicked button.
+  function insertEventAsMoment(seqId: SequenceID, eventId: EventID, index: number) {
+    const before = observer.sequences;
+    observer.sequences = before.map((s) => {
+      if (s.id !== seqId) return s;
+      const moments = [...s.moments];
+      moments.splice(Math.max(0, Math.min(index, moments.length)), 0, {
+        id: generateId(),
+        events: [eventId],
+        direction: 'forward',
+      });
+      return { ...s, moments };
+    });
+    pushUndo('Added moment', () => {
+      observer.sequences = before;
+    });
+  }
+
+  function addEventToMoment(seqId: SequenceID, momentId: MomentID, eventId: EventID) {
+    const before = observer.sequences;
+    const target = before.find((s) => s.id === seqId)?.moments.find((m) => m.id === momentId);
+    // Moment.events is a set — a repeat drop of an event already in this
+    // moment is a no-op, not a duplicate, and shouldn't push an undo for
+    // an edit that didn't actually happen.
+    if (!target || target.events.includes(eventId)) return;
+    observer.sequences = before.map((s) =>
+      s.id !== seqId
+        ? s
+        : {
+            ...s,
+            moments: s.moments.map((m) => (m.id !== momentId ? m : { ...m, events: [...m.events, eventId] })),
+          },
+    );
+    pushUndo('Added event to moment', () => {
+      observer.sequences = before;
+    });
+  }
 </script>
 
 <CollapsiblePanel open={false}>
@@ -276,6 +321,8 @@
         onReorderEvents={(momentId, draggedId, targetId, edge) =>
           reorderEvents(sequence.id, momentId, draggedId, targetId, edge)}
         onHoverChange={(edge) => updateSequenceHover(sequence.id, edge)}
+        onInsertEventAsMoment={(eventId, index) => insertEventAsMoment(sequence.id, eventId, index)}
+        onAddEventToMoment={(momentId, eventId) => addEventToMoment(sequence.id, momentId, eventId)}
       />
       <div class="sequence-gap">
         <DropIndicatorLine

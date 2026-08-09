@@ -47,6 +47,8 @@
     onReorderSequences,
     onReorderEvents,
     onHoverChange,
+    onInsertEventAsMoment,
+    onAddEventToMoment,
   }: {
     sequence: MomentSequence;
     observerId: ObserverID;
@@ -62,6 +64,13 @@
     onReorderSequences: (draggedSequenceId: SequenceID, targetSequenceId: SequenceID, edge: Edge) => void;
     onReorderEvents: (momentId: MomentID, draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
     onHoverChange: (edge: Edge | null) => void;
+    // storyEvent dropped at index `index` within this sequence -> wrap it
+    // in a brand-new moment spliced in there (0 = front, moments.length =
+    // end). storyEvent dropped on an existing moment (handled in
+    // MomentBox, threaded through as onAddEventToMoment) -> add it to that
+    // moment instead.
+    onInsertEventAsMoment: (eventId: EventID, index: number) => void;
+    onAddEventToMoment: (momentId: MomentID, eventId: EventID) => void;
   } = $props();
 
   let newMomentEvents = $state<string[]>([]);
@@ -102,14 +111,18 @@
   }
 
   function canDropEmptyMoments(source: DragBoxData): boolean {
+    if (source.level === 'storyEvent') return true;
     return source.level === 'sequence' && source.id !== sequence.id && source.containerId === observerId;
   }
 
   let emptyMomentsHovered = $state(false);
 
   function handleEmptyMomentsDrop(source: DragBoxData) {
-    if (source.level !== 'sequence') return;
-    onMergeInto(source.id, null, null);
+    if (source.level === 'storyEvent') {
+      onInsertEventAsMoment(source.id, 0);
+    } else if (source.level === 'sequence') {
+      onMergeInto(source.id, null, null);
+    }
   }
 
   let isEmptyMomentsPotentialTarget = $derived.by(() => {
@@ -124,6 +137,7 @@
   // moment's identity — reorderMoments' own no-op guard already makes a
   // drop-on-current-position harmless.
   function canDropOnMoments(source: DragBoxData): boolean {
+    if (source.level === 'storyEvent') return true;
     if (source.level === 'moment') return source.containerId === sequence.id;
     if (source.level === 'sequence') return source.containerId === observerId && source.id !== sequence.id;
     return false;
@@ -141,6 +155,47 @@
       hoveredMoment = { id: momentId, edge };
     } else if (hoveredMoment?.id === momentId) {
       hoveredMoment = null;
+    }
+  }
+
+  // The header/trailing-strip regions mean two different things depending
+  // on what's in flight: for a sequence drag, "put that sequence before/
+  // after this one" (ObserverCard's own sequence-gap indicator, via
+  // onHoverChange); for a storyEvent, "make a new first/last moment here",
+  // whose indicator is this block's own gap above moments[0] / below the
+  // last moment — or the empty-state box when there are no moments. On
+  // leave, both are cleared unconditionally rather than re-checking
+  // getDragging(): the module-level drag state is only reliable while a
+  // drag is actually in flight, and clearing a gap that was never lit is a
+  // no-op.
+  function updateHeaderHover(edge: Edge | null) {
+    if (edge === null) {
+      onHoverChange(null);
+      updateMomentHover(sequence.moments[0]?.id ?? '', null);
+      emptyMomentsHovered = false;
+      return;
+    }
+    if (getDragging()?.level === 'storyEvent') {
+      if (sequence.moments.length === 0) emptyMomentsHovered = true;
+      else updateMomentHover(sequence.moments[0].id, 'top');
+    } else {
+      onHoverChange('top');
+    }
+  }
+
+  function updateTrailingHover(edge: Edge | null) {
+    const last = sequence.moments[sequence.moments.length - 1];
+    if (edge === null) {
+      onHoverChange(null);
+      updateMomentHover(last?.id ?? '', null);
+      emptyMomentsHovered = false;
+      return;
+    }
+    if (getDragging()?.level === 'storyEvent') {
+      if (!last) emptyMomentsHovered = true;
+      else updateMomentHover(last.id, 'bottom');
+    } else {
+      onHoverChange('bottom');
     }
   }
 
@@ -171,9 +226,12 @@
     data-drag-box
     use:dropBox={{
       data: () => dragData,
-      canDrop: canDropSequence,
-      onDrop: (source) => onReorderSequences(source.id, sequence.id, 'top'),
-      onHoverChange: (edge) => onHoverChange(edge !== null ? 'top' : null),
+      canDrop: (source) => source.level === 'storyEvent' || canDropSequence(source),
+      onDrop: (source) =>
+        source.level === 'storyEvent'
+          ? onInsertEventAsMoment(source.id, 0)
+          : onReorderSequences(source.id, sequence.id, 'top'),
+      onHoverChange: updateHeaderHover,
     }}
   >
     <DragHandle label={`Drag "${label}" to reorder, or drop onto another sequence's moments to merge`} data={() => dragData} />
@@ -196,7 +254,7 @@
         onHoverChange: (edge) => (emptyMomentsHovered = edge !== null),
       }}
     >
-      No moments yet — drag another sequence here to merge it in.
+      No moments yet — drop an event here, or drag another sequence in to merge it.
     </div>
   {:else}
     <div class="moments">
@@ -220,6 +278,8 @@
           onMergeInto={(sourceSeqId, targetMomentId, edge) => onMergeInto(sourceSeqId, targetMomentId, edge)}
           onReorderEvents={(draggedId, targetId, edge) => onReorderEvents(moment.id, draggedId, targetId, edge)}
           onHoverChange={(edge) => updateMomentHover(moment.id, edge)}
+          onInsertEventBefore={(eventId) => onInsertEventAsMoment(eventId, i)}
+          onAddEvent={(eventId) => onAddEventToMoment(moment.id, eventId)}
         />
         <div class="moment-gap">
           <DropIndicatorLine
@@ -254,9 +314,12 @@
     data-drag-box
     use:dropBox={{
       data: () => dragData,
-      canDrop: canDropSequence,
-      onDrop: (source) => onReorderSequences(source.id, sequence.id, 'bottom'),
-      onHoverChange: (edge) => onHoverChange(edge !== null ? 'bottom' : null),
+      canDrop: (source) => source.level === 'storyEvent' || canDropSequence(source),
+      onDrop: (source) =>
+        source.level === 'storyEvent'
+          ? onInsertEventAsMoment(source.id, sequence.moments.length)
+          : onReorderSequences(source.id, sequence.id, 'bottom'),
+      onHoverChange: updateTrailingHover,
     }}
   ></div>
 </ChamferBox>

@@ -10,10 +10,17 @@ import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-
 import type { Edge } from '../reorder';
 
 export interface DragBoxData {
-  level: 'sequence' | 'moment' | 'event';
+  // 'event' is a chip already inside a specific moment (containerId = that
+  // moment's id, for reordering within it) — distinct from 'storyEvent', a
+  // raw StoryEvent dragged out of the Events table (no containerId), which
+  // can be dropped onto a moment (add it there) or a sequence (create a
+  // new moment containing it, at a position determined by the drop
+  // target).
+  level: 'sequence' | 'moment' | 'event' | 'storyEvent';
   id: string;
   // The sequence id a moment payload belongs to, or the moment id an
-  // event payload belongs to — not meaningful for a 'sequence' payload.
+  // event payload belongs to — not meaningful for a 'sequence' or
+  // 'storyEvent' payload.
   containerId?: string;
 }
 
