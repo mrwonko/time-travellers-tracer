@@ -28,3 +28,10 @@ npm run check     # type-check (svelte-check + tsc)
 This is a frontend-only static app — no backend. The production build must
 be *served* over `http://` (`npm run preview`, or any static host) rather
 than opened via `file://`, since the app relies on `localStorage`.
+
+## Deployment
+
+Live at **https://mrwonko.github.io/time-travellers-tracer/**. Every push
+to `main` builds and deploys automatically via
+[`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml) (GitHub
+Actions → GitHub Pages) — no manual deploy step.
