@@ -75,7 +75,7 @@
     </ChamferBox>
   </main>
 
-  <PageFooter text="TT/OPS &middot; REV. 0.1 &middot; UNCLASSIFIED &mdash; PERSONAL COPY" />
+  <PageFooter text="TT/OPS &middot; REV. 0.2 &middot; UNCLASSIFIED &mdash; PERSONAL COPY" />
 </div>
 
 <style>
