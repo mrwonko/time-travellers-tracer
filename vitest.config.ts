@@ -23,6 +23,10 @@ export default defineConfig({
           browser: {
             enabled: true,
             provider: playwright(),
+            // Headless by default so a Chromium window doesn't pop up on
+            // every test run — pass --browser.headless=false to watch a
+            // failure visually when debugging.
+            headless: true,
             instances: [{ browser: 'chromium' }],
           },
         },

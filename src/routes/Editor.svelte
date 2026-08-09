@@ -13,6 +13,9 @@
   // at the handoff — plus one multi-event moment (the Handler witnesses
   // the handoff and the depot fire together, as a single simultaneous
   // moment) to demonstrate that a Moment isn't always exactly one event.
+  // Voss also has a second, unmerged sequence — a moment recorded from a
+  // separate account before it was clear where it falls relative to their
+  // other moments (spec §2/§3) — to demonstrate multi-sequence observers.
   const primeId = generateId();
 
   let universes = $state<StoryUniverse[]>([{ id: primeId, label: 'Prime' }]);
@@ -31,18 +34,32 @@
     {
       id: generateId(),
       name: 'K. Voss',
-      sequence: [
-        { id: generateId(), events: [e1], direction: 'forward' },
-        { id: generateId(), events: [e2], direction: 'forward' },
-        { id: generateId(), events: [e3], direction: 'forward' },
+      sequences: [
+        {
+          id: generateId(),
+          moments: [
+            { id: generateId(), events: [e1], direction: 'forward' },
+            { id: generateId(), events: [e2], direction: 'forward' },
+            { id: generateId(), events: [e3], direction: 'forward' },
+          ],
+        },
+        {
+          id: generateId(),
+          moments: [{ id: generateId(), events: [e3], direction: 'forward' }],
+        },
       ],
     },
     {
       id: generateId(),
       name: 'The Handler',
-      sequence: [
-        { id: generateId(), events: [e3], direction: 'inverted' },
-        { id: generateId(), events: [e2, e1], direction: 'inverted' },
+      sequences: [
+        {
+          id: generateId(),
+          moments: [
+            { id: generateId(), events: [e3], direction: 'inverted' },
+            { id: generateId(), events: [e2, e1], direction: 'inverted' },
+          ],
+        },
       ],
     },
   ]);
@@ -88,6 +105,17 @@
        make room for the other" behavior entirely. This makes each column
        size to its own content instead. */
     align-items: start;
+    /* .layout is flex:1 inside .editor's min-height:100svh column, so it's
+       often taller than its own (auto-sized) content — e.g. with every
+       panel collapsed. Grid's default align-content (normal, ~= stretch
+       here) would distribute that leftover height across the auto row
+       tracks, growing gaps between rows even though align-items above
+       already pins each *item* to its track's top — invisible with one
+       row (two-column layout: the slack just sits below the content), but
+       very visible once panels stack into separate rows on narrow
+       viewports. Pinning content-sized rows to the top keeps any leftover
+       space below everything instead of wedged between panels. */
+    align-content: start;
   }
 
   .col-side {
@@ -96,7 +124,15 @@
     gap: inherit;
   }
 
-  @media (max-width: 720px) {
+  /* The right column (Universes/Observers) carries data-tables with a UUID
+     column and multiple action buttons per row — content that doesn't
+     compress much further before it clips (verified by survey: still
+     clipping as late as ~1150px, clean by 1200px). Rather than chase the
+     exact narrow pixel where it stops clipping — fragile, since real data
+     (longer names, more visible UUIDs) shifts that threshold — the
+     two-column layout is reserved for genuinely wide viewports; anything
+     narrower stacks single-column, same as the phone-width case below. */
+  @media (max-width: 1200px) {
     .layout {
       grid-template-columns: 1fr;
     }

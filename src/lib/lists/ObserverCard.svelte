@@ -1,7 +1,7 @@
 <script lang="ts">
   // TODO: this row-per-entity edit pattern (own local `editing`/draft
   // state, Save/Cancel via callback props) repeats near-identically
-  // across EventRow, UniverseRow, and here/MomentRow. Svelte 5 supports
+  // across EventRow, UniverseRow, and here/MomentBox. Svelte 5 supports
   // a generic "editable list" component for this (a script block with a
   // generics="T" attribute, plus snippet props for per-column render
   // logic), but that's a real shared-shape design decision, not
@@ -11,12 +11,14 @@
   import { generateId } from '../id';
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';
-  import DirectionToggle from '../DirectionToggle.svelte';
-  import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import CollapsiblePanel from '../CollapsiblePanel.svelte';
-  import MomentRow from './MomentRow.svelte';
+  import MomentSequenceBlock from './MomentSequenceBlock.svelte';
+  import DropIndicatorLine from '../dnd/DropIndicatorLine.svelte';
+  import { type DragBoxData } from '../dnd/actions';
+  import { getDragging } from '../dnd/dragState.svelte';
   import { pushUndo } from '../toastQueue.svelte';
-  import type { StoryObserver, StoryEvent, Moment } from '../types';
+  import { moveWithinList, spliceListInto, type Edge } from '../reorder';
+  import type { StoryObserver, StoryEvent, Moment, MomentID, SequenceID, EventID } from '../types';
 
   let {
     observer,
@@ -49,32 +51,178 @@
     editingName = false;
   }
 
-  // events: usually one, but a Moment can hold several simultaneously
-  // witnessed events (spec §3) — hence a combobox, not a plain select.
-  // Deliberately only a one-time default — doesn't need to track later
-  // changes to `events[0]`.
-  // svelte-ignore state_referenced_locally
-  let newMomentEvents = $state<string[]>(events[0] ? [events[0].id] : []);
-  let newMomentDirection = $state<'forward' | 'inverted'>('forward');
-  function addMoment() {
-    if (!newMomentEvents.length) return;
-    const moment: Moment = { id: generateId(), events: newMomentEvents, direction: newMomentDirection };
-    observer.sequence = [...observer.sequence, moment];
+  // Display label per sequence fragment — just its position in the array;
+  // sequences have no meaningful order relative to each other (spec §2)
+  // and can be freely drag-reordered (reorderSequences below) purely as a
+  // display-order preference, so this label is just "which block on
+  // screen," not an identity.
+  let sequenceLabels = $derived(observer.sequences.map((s, i) => ({ id: s.id, label: `Sequence ${i + 1}` })));
+  let totalMoments = $derived(observer.sequences.reduce((sum, s) => sum + s.moments.length, 0));
+  let momentCountLabel = $derived(
+    `${totalMoments} moment${totalMoments === 1 ? '' : 's'} · ${observer.sequences.length} sequence${observer.sequences.length === 1 ? '' : 's'}`,
+  );
+
+  function addSequence() {
+    observer.sequences = [...observer.sequences, { id: generateId(), moments: [] }];
   }
 
-  function saveMoment(id: string, patch: { events: string[]; direction: 'forward' | 'inverted' }) {
-    observer.sequence = observer.sequence.map((m) => (m.id === id ? { ...m, ...patch } : m));
-  }
-
-  function removeMoment(id: string) {
-    const index = observer.sequence.findIndex((m) => m.id === id);
+  function removeSequence(seqId: SequenceID) {
+    const index = observer.sequences.findIndex((s) => s.id === seqId);
     if (index === -1) return;
-    const item = observer.sequence[index];
-    observer.sequence = observer.sequence.filter((m) => m.id !== id);
-    pushUndo('Deleted moment', () => {
-      const restored = [...observer.sequence];
+    const item = observer.sequences[index];
+    observer.sequences = observer.sequences.filter((s) => s.id !== seqId);
+    pushUndo('Deleted sequence', () => {
+      const restored = [...observer.sequences];
       restored.splice(index, 0, item);
-      observer.sequence = restored;
+      observer.sequences = restored;
+    });
+  }
+
+  function addMoment(seqId: SequenceID, moment: Moment) {
+    observer.sequences = observer.sequences.map((s) => (s.id === seqId ? { ...s, moments: [...s.moments, moment] } : s));
+  }
+
+  function saveMoment(seqId: SequenceID, momentId: string, patch: { events: string[]; direction: 'forward' | 'inverted' }) {
+    observer.sequences = observer.sequences.map((s) =>
+      s.id === seqId ? { ...s, moments: s.moments.map((m) => (m.id === momentId ? { ...m, ...patch } : m)) } : s,
+    );
+  }
+
+  function removeMoment(seqId: SequenceID, momentId: string) {
+    const sequence = observer.sequences.find((s) => s.id === seqId);
+    if (!sequence) return;
+    const index = sequence.moments.findIndex((m) => m.id === momentId);
+    if (index === -1) return;
+    const item = sequence.moments[index];
+    observer.sequences = observer.sequences.map((s) =>
+      s.id === seqId ? { ...s, moments: s.moments.filter((m) => m.id !== momentId) } : s,
+    );
+    pushUndo('Deleted moment', () => {
+      observer.sequences = observer.sequences.map((s) => {
+        if (s.id !== seqId) return s;
+        const restored = [...s.moments];
+        restored.splice(index, 0, item);
+        return { ...s, moments: restored };
+      });
+    });
+  }
+
+  // Moment order within a sequence is spec-meaningful (it's the observer's
+  // actual experienced chronological order, not just display order), so
+  // unlike a pure reorder of presentation-only data, a bad drop here keeps
+  // the same pushUndo safety net as merge/delete.
+  function reorderMoments(seqId: SequenceID, draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) {
+    const before = observer.sequences;
+    observer.sequences = before.map((s) =>
+      s.id === seqId ? { ...s, moments: moveWithinList(s.moments, draggedMomentId, targetMomentId, edge) } : s,
+    );
+    pushUndo('Reordered moments', () => {
+      observer.sequences = before;
+    });
+  }
+
+  // Display order among an observer's own sequences has no spec meaning
+  // (see sequenceLabels above) — dragging one past another is purely a
+  // presentation preference, nothing is lost by a bad drop, so no undo.
+  function reorderSequences(draggedId: SequenceID, targetId: SequenceID, edge: Edge) {
+    observer.sequences = moveWithinList(observer.sequences, draggedId, targetId, edge);
+  }
+
+  // Event order within a moment has no spec meaning (Moment.events is a
+  // set) — reordering here is cosmetic consistency with the other two
+  // levels, not a data-meaningful edit, so unlike reorderMoments there's
+  // no undo toast. It's still persisted (the array order is what's
+  // stored and displayed), just not undo-guarded.
+  function reorderEvents(seqId: SequenceID, momentId: MomentID, draggedEventId: EventID, targetEventId: EventID, edge: Edge) {
+    observer.sequences = observer.sequences.map((s) =>
+      s.id !== seqId
+        ? s
+        : {
+            ...s,
+            moments: s.moments.map((m) =>
+              m.id !== momentId
+                ? m
+                : {
+                    ...m,
+                    events: moveWithinList(
+                      m.events.map((id) => ({ id })),
+                      draggedEventId,
+                      targetEventId,
+                      edge,
+                    ).map((e) => e.id),
+                  },
+            ),
+          },
+    );
+  }
+
+  // The observer's own sequences list — same shared-gap-indicator pattern
+  // as MomentSequenceBlock's moments list, one level up. No self-
+  // exclusion in canDropOnSequences (unlike MomentSequenceBlock's own
+  // canDropSequence, used for its actual header/trailing hit targets)
+  // since a gap isn't tied to one specific sequence's identity —
+  // reorderSequences' own no-op guard already makes a drop-on-current-
+  // position harmless.
+  function canDropOnSequences(source: DragBoxData): boolean {
+    return source.level === 'sequence' && source.containerId === observer.id;
+  }
+
+  let isSequencesPotentialTarget = $derived.by(() => {
+    const dragging = getDragging();
+    return dragging !== null && canDropOnSequences(dragging);
+  });
+
+  let hoveredSequence = $state<{ id: SequenceID; edge: Edge } | null>(null);
+
+  function updateSequenceHover(seqId: SequenceID, edge: Edge | null) {
+    if (edge !== null) {
+      hoveredSequence = { id: seqId, edge };
+    } else if (hoveredSequence?.id === seqId) {
+      hoveredSequence = null;
+    }
+  }
+
+  // A gap whose immediate neighbor on either side is the sequence
+  // currently being dragged is never a real drop position — dropping it
+  // there would insert it right back where it already sits (its other
+  // neighbor's own canDrop already excludes exact-self, but the neighbor
+  // across the gap from it doesn't know that, so without this check the
+  // gap right next to the dragged sequence would still light up as if
+  // "drop before/after itself" were a real, different position).
+  function isSequenceGapExcluded(beforeId: SequenceID | null, afterId: SequenceID | null): boolean {
+    const dragging = getDragging();
+    return dragging !== null && (dragging.id === beforeId || dragging.id === afterId);
+  }
+
+  function isSequenceGapPotential(beforeId: SequenceID | null, afterId: SequenceID | null): boolean {
+    return isSequencesPotentialTarget && !isSequenceGapExcluded(beforeId, afterId);
+  }
+
+  function isSequenceGapHovered(beforeId: SequenceID | null, afterId: SequenceID | null): boolean {
+    if (isSequenceGapExcluded(beforeId, afterId)) return false;
+    if (!hoveredSequence) return false;
+    if (afterId !== null && hoveredSequence.id === afterId && hoveredSequence.edge === 'top') return true;
+    if (beforeId !== null && hoveredSequence.id === beforeId && hoveredSequence.edge === 'bottom') return true;
+    return false;
+  }
+
+  // Splices the dragged sequence's moments into the target sequence at the
+  // position implied by targetMomentId/edge (null/null = append, for the
+  // empty-target-sequence drop case), then removes the now-empty source
+  // sequence entirely. Undo restores the full pre-merge sequences array
+  // wholesale rather than trying to re-split the merged moments back apart
+  // — the same "snapshot the whole array" idiom every other undoable edit
+  // here uses, since re-deriving the reverse of an arbitrary splice is
+  // more failure-prone than a full restore.
+  function mergeInto(sourceId: SequenceID, targetId: SequenceID, targetMomentId: MomentID | null, edge: Edge | null) {
+    const before = observer.sequences;
+    const source = before.find((s) => s.id === sourceId);
+    if (!source) return;
+    observer.sequences = before
+      .filter((s) => s.id !== sourceId)
+      .map((s) => (s.id === targetId ? { ...s, moments: spliceListInto(source.moments, s.moments, targetMomentId, edge) } : s));
+    pushUndo('Merged sequences', () => {
+      observer.sequences = before;
     });
   }
 </script>
@@ -92,7 +240,7 @@
     {:else}
       <span class="observer-name">{observer.name} <UuidTag id={observer.id} /></span>
     {/if}
-    <span class="moment-count mono">{observer.sequence.length} moment{observer.sequence.length === 1 ? '' : 's'}</span>
+    <span class="moment-count mono">{momentCountLabel}</span>
   {/snippet}
   {#snippet actions()}
     {#if editingName}
@@ -104,41 +252,39 @@
     {/if}
   {/snippet}
 
-  <div class="moments">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Event</th>
-          <th>Direction</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each observer.sequence as moment, i (moment.id)}
-          <MomentRow
-            {moment}
-            index={i + 1}
-            {eventOptions}
-            {eventLabel}
-            onSave={(patch) => saveMoment(moment.id, patch)}
-            onDelete={() => removeMoment(moment.id)}
-          />
-        {/each}
-        <tr class="add-row">
-          <td></td>
-          <td>
-            <MultiSelectCombobox options={eventOptions} bind:selected={newMomentEvents} placeholder="Events…" />
-          </td>
-          <td>
-            <DirectionToggle bind:direction={newMomentDirection} />
-          </td>
-          <td class="actions">
-            <IconButton icon="plus" label="Add moment" variant="accent" size="sm" onclick={addMoment} />
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="sequences">
+    <div class="sequence-gap">
+      <DropIndicatorLine
+        potential={isSequenceGapPotential(null, observer.sequences[0]?.id ?? null)}
+        hovered={isSequenceGapHovered(null, observer.sequences[0]?.id ?? null)}
+      />
+    </div>
+    {#each observer.sequences as sequence, i (sequence.id)}
+      <MomentSequenceBlock
+        {sequence}
+        observerId={observer.id}
+        label={sequenceLabels[i].label}
+        {eventOptions}
+        {eventLabel}
+        onAddMoment={(moment) => addMoment(sequence.id, moment)}
+        onSaveMoment={(momentId, patch) => saveMoment(sequence.id, momentId, patch)}
+        onDeleteMoment={(momentId) => removeMoment(sequence.id, momentId)}
+        onDeleteSequence={() => removeSequence(sequence.id)}
+        onMergeInto={(sourceId, targetMomentId, edge) => mergeInto(sourceId, sequence.id, targetMomentId, edge)}
+        onReorderMoments={(draggedId, targetId, edge) => reorderMoments(sequence.id, draggedId, targetId, edge)}
+        onReorderSequences={(draggedId, targetId, edge) => reorderSequences(draggedId, targetId, edge)}
+        onReorderEvents={(momentId, draggedId, targetId, edge) =>
+          reorderEvents(sequence.id, momentId, draggedId, targetId, edge)}
+        onHoverChange={(edge) => updateSequenceHover(sequence.id, edge)}
+      />
+      <div class="sequence-gap">
+        <DropIndicatorLine
+          potential={isSequenceGapPotential(sequence.id, observer.sequences[i + 1]?.id ?? null)}
+          hovered={isSequenceGapHovered(sequence.id, observer.sequences[i + 1]?.id ?? null)}
+        />
+      </div>
+    {/each}
+    <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />
   </div>
 </CollapsiblePanel>
 
@@ -157,7 +303,15 @@
     opacity: 0.5;
   }
 
-  .moments {
+  .sequences {
+    display: flex;
+    flex-direction: column;
+    /* Bleed out to the edge of the observer's own outer panel (canceling
+       its padding, not this component's own — see the --panel-padding
+       comment in CollapsiblePanel.svelte) so a sequence fragment's width
+       is limited only by the observer box's own border, not by padding
+       meant for the title row and other non-sequence content. */
+    margin-inline: calc(var(--panel-padding, 0px) * -1);
     /* This panel can end up quite narrow (the right-hand column of the
        two-column layout). Scroll rather than clip if content genuinely
        can't compress further — but don't force a min-width, or every
@@ -165,9 +319,11 @@
     overflow-x: auto;
   }
 
-  .actions {
-    display: flex;
-    gap: 0.4rem;
-    flex: none;
+  /* Fixed-size regardless of potential/hovered state (no layout shift
+     when a drag starts), same height as the old flex `gap` it replaces —
+     see DropIndicatorLine.svelte / MomentSequenceBlock's own .moment-gap
+     for the identical pattern one level deeper. */
+  .sequence-gap {
+    height: 0.75rem;
   }
 </style>
