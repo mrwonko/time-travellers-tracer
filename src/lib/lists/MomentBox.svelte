@@ -115,6 +115,9 @@
     <div class="moment-header">
       <DragHandle label="Drag to reorder moment" data={() => dragData} />
       <span class="moment-index mono">#{index}</span>
+      {#if !editing}
+        <DirectionBadge direction={moment.direction} />
+      {/if}
       <UuidTag id={moment.id} />
       <div class="moment-actions">
         {#if editing}
@@ -141,7 +144,6 @@
             />
           {/each}
         </div>
-        <DirectionBadge direction={moment.direction} />
       {/if}
     </div>
   </ChamferBox>
