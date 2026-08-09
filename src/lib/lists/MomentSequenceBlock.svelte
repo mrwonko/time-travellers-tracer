@@ -13,7 +13,8 @@
   import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import ChamferBox from '../ChamferBox.svelte';
   import MomentBox from './MomentBox.svelte';
-  import type { MomentSequence, Moment, SequenceID } from '../types';
+  import type { MomentSequence, Moment, MomentID, SequenceID } from '../types';
+  import type { Edge } from '../reorder';
 
   let {
     sequence,
@@ -26,6 +27,7 @@
     onDeleteMoment,
     onDeleteSequence,
     onMergeInto,
+    onReorderMoments,
   }: {
     sequence: MomentSequence;
     label: string;
@@ -37,6 +39,7 @@
     onDeleteMoment: (momentId: string) => void;
     onDeleteSequence: () => void;
     onMergeInto: (targetId: SequenceID) => void;
+    onReorderMoments: (draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) => void;
   } = $props();
 
   // Deliberately just a one-time default, like ObserverCard's own
@@ -86,10 +89,12 @@
       <MomentBox
         {moment}
         index={i + 1}
+        sequenceId={sequence.id}
         {eventOptions}
         {eventLabel}
         onSave={(patch) => onSaveMoment(moment.id, patch)}
         onDelete={() => onDeleteMoment(moment.id)}
+        onReorder={(draggedId, targetId, edge) => onReorderMoments(draggedId, targetId, edge)}
       />
     {/each}
   </div>

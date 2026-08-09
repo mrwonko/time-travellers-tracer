@@ -51,6 +51,16 @@ export interface DropBoxParams {
   data: () => DragBoxData;
   canDrop: (source: DragBoxData) => boolean;
   onDrop: (source: DragBoxData, edge: Edge) => void;
+  // Fires while a valid drag hovers this box, with the edge (top/bottom)
+  // it's currently closest to — and with `null` once it leaves or drops —
+  // so callers can render a live insertion-indicator line. Optional: a
+  // drop target that doesn't render its own indicator (e.g. a container-
+  // level empty-list fallback) can omit it.
+  onHoverChange?: (edge: Edge | null) => void;
+}
+
+function edgeOf(data: Record<string | symbol, unknown>): Edge {
+  return extractClosestEdge(data) === 'top' ? 'top' : 'bottom';
 }
 
 // Registers `node` as a drop target that also tracks which edge (top/
@@ -64,10 +74,12 @@ export function dropBox(node: HTMLElement, params: DropBoxParams) {
     getData: ({ input, element }) =>
       attachClosestEdge(toRecord(current.data()), { element, input, allowedEdges: ['top', 'bottom'] }),
     canDrop: ({ source }) => current.canDrop(toDragBoxData(source.data)),
+    onDragEnter: ({ self }) => current.onHoverChange?.(edgeOf(self.data)),
+    onDrag: ({ self }) => current.onHoverChange?.(edgeOf(self.data)),
+    onDragLeave: () => current.onHoverChange?.(null),
     onDrop: ({ source, self }) => {
-      const extracted = extractClosestEdge(self.data);
-      const edge: Edge = extracted === 'top' ? 'top' : 'bottom';
-      current.onDrop(toDragBoxData(source.data), edge);
+      current.onHoverChange?.(null);
+      current.onDrop(toDragBoxData(source.data), edgeOf(self.data));
     },
   });
 

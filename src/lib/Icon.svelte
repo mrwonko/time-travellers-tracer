@@ -1,5 +1,5 @@
 <script module lang="ts">
-  export type IconName = 'plus' | 'edit' | 'x' | 'save' | 'chevron' | 'merge';
+  export type IconName = 'plus' | 'edit' | 'x' | 'save' | 'chevron' | 'merge' | 'grip';
 
   // Square caps/miter joins (not round) to match the sharp-corner design
   // language — see design-language.md §Shape. 16x16 viewBox throughout.
@@ -15,6 +15,18 @@
     // other glyph here, unlike the curved-branch convention of most VCS
     // "merge" icons.
     merge: ['M3 3 L8 8', 'M13 3 L8 8', 'M8 8 L8 13'],
+    // A 2x3 grid of tiny square dots (short segments with a square
+    // linecap render as dots) — the familiar drag-handle glyph, built
+    // from the same straight-segment primitive as every other icon here
+    // rather than reaching for a circle.
+    grip: [
+      'M5.5 3.3 L5.5 3.7',
+      'M10.5 3.3 L10.5 3.7',
+      'M5.5 7.8 L5.5 8.2',
+      'M10.5 7.8 L10.5 8.2',
+      'M5.5 12.3 L5.5 12.7',
+      'M10.5 12.3 L10.5 12.7',
+    ],
   };
 </script>
 

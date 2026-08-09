@@ -14,23 +14,44 @@
   import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import ChamferBox from '../ChamferBox.svelte';
   import EventChip from './EventChip.svelte';
-  import type { Moment } from '../types';
+  import DragHandle from '../dnd/DragHandle.svelte';
+  import { dropBox, type DragBoxData } from '../dnd/actions';
+  import type { Moment, MomentID, SequenceID } from '../types';
+  import type { Edge } from '../reorder';
 
   let {
     moment,
     index,
+    sequenceId,
     eventOptions,
     eventLabel,
     onSave,
     onDelete,
+    onReorder,
   }: {
     moment: Moment;
     index: number;
+    sequenceId: SequenceID;
     eventOptions: { id: string; label: string }[];
     eventLabel: (id: string) => string;
     onSave: (patch: { events: string[]; direction: 'forward' | 'inverted' }) => void;
     onDelete: () => void;
+    onReorder: (draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) => void;
   } = $props();
+
+  const dragData: DragBoxData = $derived({ level: 'moment', id: moment.id, containerId: sequenceId });
+
+  // Same-sequence reorder only — dragging a moment directly between
+  // sequences isn't in scope (only whole-sequence merge-splice is).
+  function canDrop(source: DragBoxData): boolean {
+    return source.level === 'moment' && source.containerId === sequenceId && source.id !== moment.id;
+  }
+
+  let hoverEdge = $state<Edge | null>(null);
+
+  function handleDrop(source: DragBoxData, edge: Edge) {
+    onReorder(source.id, moment.id, edge);
+  }
 
   let editing = $state(false);
   let editEvents = $state<string[]>([]);
@@ -51,36 +72,76 @@
   }
 </script>
 
-<ChamferBox size="sm" class="moment-box">
-  <div class="moment-header">
-    <span class="moment-index mono">#{index}</span>
-    <UuidTag id={moment.id} />
-    <div class="moment-actions">
+<div
+  class="moment-drag-box"
+  class:drop-top={hoverEdge === 'top'}
+  class:drop-bottom={hoverEdge === 'bottom'}
+  data-drag-box
+  use:dropBox={{ data: () => dragData, canDrop, onDrop: handleDrop, onHoverChange: (edge) => (hoverEdge = edge) }}
+>
+  <ChamferBox size="sm" class="moment-box">
+    <div class="moment-header">
+      <DragHandle label="Drag to reorder moment" data={() => dragData} />
+      <span class="moment-index mono">#{index}</span>
+      <UuidTag id={moment.id} />
+      <div class="moment-actions">
+        {#if editing}
+          <IconButton icon="save" label="Save moment" size="sm" onclick={save} />
+          <IconButton icon="x" label="Cancel edit" size="sm" onclick={cancel} />
+        {:else}
+          <IconButton icon="edit" label="Edit moment" size="sm" onclick={startEdit} />
+          <IconButton icon="x" label="Delete moment" size="sm" onclick={onDelete} />
+        {/if}
+      </div>
+    </div>
+    <div class="moment-body">
       {#if editing}
-        <IconButton icon="save" label="Save moment" size="sm" onclick={save} />
-        <IconButton icon="x" label="Cancel edit" size="sm" onclick={cancel} />
+        <MultiSelectCombobox options={eventOptions} bind:selected={editEvents} placeholder="Events…" />
+        <DirectionToggle bind:direction={editDirection} />
       {:else}
-        <IconButton icon="edit" label="Edit moment" size="sm" onclick={startEdit} />
-        <IconButton icon="x" label="Delete moment" size="sm" onclick={onDelete} />
+        <div class="moment-events">
+          {#each moment.events as eventId (eventId)}
+            <EventChip label={eventLabel(eventId)} />
+          {/each}
+        </div>
+        <DirectionBadge direction={moment.direction} />
       {/if}
     </div>
-  </div>
-  <div class="moment-body">
-    {#if editing}
-      <MultiSelectCombobox options={eventOptions} bind:selected={editEvents} placeholder="Events…" />
-      <DirectionToggle bind:direction={editDirection} />
-    {:else}
-      <div class="moment-events">
-        {#each moment.events as eventId (eventId)}
-          <EventChip label={eventLabel(eventId)} />
-        {/each}
-      </div>
-      <DirectionBadge direction={moment.direction} />
-    {/if}
-  </div>
-</ChamferBox>
+  </ChamferBox>
+</div>
 
 <style>
+  /* Plain wrapper around the ChamferBox purely so drag-and-drop has an
+     element to attach to (data-drag-box / the dropBox action) — use:
+     directives only apply to elements written directly in a template,
+     not through a component boundary, so this can't live on ChamferBox
+     itself. No layout effect of its own (no padding/margin), just the
+     insertion-indicator bar drawn in the gap above/below on hover. */
+  .moment-drag-box {
+    position: relative;
+  }
+
+  .moment-drag-box::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-accent);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .moment-drag-box.drop-top::before {
+    top: -0.25rem;
+    opacity: 1;
+  }
+
+  .moment-drag-box.drop-bottom::before {
+    bottom: -0.25rem;
+    opacity: 1;
+  }
+
   /* One step further recessed than the sequence block it lives inside
      (--color-panel-bg vs. the sequence's --color-bg) — same "step back in
      the light/dark elevation direction reads as nested" mechanism as

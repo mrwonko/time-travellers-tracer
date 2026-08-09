@@ -14,7 +14,8 @@
   import CollapsiblePanel from '../CollapsiblePanel.svelte';
   import MomentSequenceBlock from './MomentSequenceBlock.svelte';
   import { pushUndo } from '../toastQueue.svelte';
-  import type { StoryObserver, StoryEvent, Moment, SequenceID } from '../types';
+  import { moveWithinList, type Edge } from '../reorder';
+  import type { StoryObserver, StoryEvent, Moment, MomentID, SequenceID } from '../types';
 
   let {
     observer,
@@ -101,6 +102,20 @@
     });
   }
 
+  // Moment order within a sequence is spec-meaningful (it's the observer's
+  // actual experienced chronological order, not just display order), so
+  // unlike a pure reorder of presentation-only data, a bad drop here keeps
+  // the same pushUndo safety net as merge/delete.
+  function reorderMoments(seqId: SequenceID, draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) {
+    const before = observer.sequences;
+    observer.sequences = before.map((s) =>
+      s.id === seqId ? { ...s, moments: moveWithinList(s.moments, draggedMomentId, targetMomentId, edge) } : s,
+    );
+    pushUndo('Reordered moments', () => {
+      observer.sequences = before;
+    });
+  }
+
   // Merge is append-only concatenation (source's moments after target's) —
   // fine-grained interleaving is an editor-UI nicety left for later (spec
   // §3). Undo restores the full pre-merge sequences array wholesale rather
@@ -156,6 +171,7 @@
         onDeleteMoment={(momentId) => removeMoment(sequence.id, momentId)}
         onDeleteSequence={() => removeSequence(sequence.id)}
         onMergeInto={(targetId) => mergeInto(sequence.id, targetId)}
+        onReorderMoments={(draggedId, targetId, edge) => reorderMoments(sequence.id, draggedId, targetId, edge)}
       />
     {/each}
     <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />

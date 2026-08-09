@@ -7,7 +7,10 @@ import type { Moment } from '../types';
 // MomentBox replaces the old table-row-based MomentRow — same row-scoped
 // local edit state (own `editing`/draft, not a list-level `editingId`),
 // now rendered as a box instead of a <tr>. These tests carry over what
-// mattered about that behavior in the new shape.
+// mattered about that behavior in the new shape. Drag-and-drop reorder
+// itself needs a real multi-step pointer gesture (see actions.browser.test.ts
+// and MomentRow's own former precedent) — that's covered by
+// tests/moment-reorder.spec.ts (Playwright), not here.
 
 const eventOptions = [
   { id: 'e1', label: 'Signal received at the depot' },
@@ -25,10 +28,12 @@ describe('MomentBox', () => {
       props: {
         moment: makeMoment({ events: ['e1', 'e2'] }),
         index: 3,
+        sequenceId: 'seq1',
         eventOptions,
         eventLabel,
         onSave: () => {},
         onDelete: () => {},
+        onReorder: () => {},
       },
     });
 
@@ -46,10 +51,12 @@ describe('MomentBox', () => {
       props: {
         moment: makeMoment(),
         index: 1,
+        sequenceId: 'seq1',
         eventOptions,
         eventLabel,
         onSave: (patch) => (saved = patch),
         onDelete: () => {},
+        onReorder: () => {},
       },
     });
 
@@ -69,10 +76,12 @@ describe('MomentBox', () => {
       props: {
         moment: makeMoment(),
         index: 1,
+        sequenceId: 'seq1',
         eventOptions,
         eventLabel,
         onSave: () => (saveCalled = true),
         onDelete: () => {},
+        onReorder: () => {},
       },
     });
 
@@ -89,10 +98,12 @@ describe('MomentBox', () => {
       props: {
         moment: makeMoment(),
         index: 1,
+        sequenceId: 'seq1',
         eventOptions,
         eventLabel,
         onSave: () => {},
         onDelete: () => (deleted = true),
+        onReorder: () => {},
       },
     });
 
@@ -105,20 +116,24 @@ describe('MomentBox', () => {
       props: {
         moment: makeMoment({ id: 'a' }),
         index: 1,
+        sequenceId: 'seq1',
         eventOptions,
         eventLabel,
         onSave: () => {},
         onDelete: () => {},
+        onReorder: () => {},
       },
     });
     const boxB = await render(MomentBox, {
       props: {
         moment: makeMoment({ id: 'b' }),
         index: 2,
+        sequenceId: 'seq1',
         eventOptions,
         eventLabel,
         onSave: () => {},
         onDelete: () => {},
+        onReorder: () => {},
       },
     });
 
@@ -127,5 +142,23 @@ describe('MomentBox', () => {
 
     expect(boxA.container.querySelector('.combobox-trigger')).not.toBeNull();
     expect(boxB.container.querySelector('.combobox-trigger')).not.toBeNull();
+  });
+
+  test('a moment box exposes a drag handle and a data-drag-box root for drag-and-drop', async () => {
+    const { container } = await render(MomentBox, {
+      props: {
+        moment: makeMoment(),
+        index: 1,
+        sequenceId: 'seq1',
+        eventOptions,
+        eventLabel,
+        onSave: () => {},
+        onDelete: () => {},
+        onReorder: () => {},
+      },
+    });
+
+    expect(container.querySelector('[data-drag-box]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Drag to reorder moment"]')).not.toBeNull();
   });
 });
