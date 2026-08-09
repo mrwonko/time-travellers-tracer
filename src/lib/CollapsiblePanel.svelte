@@ -71,7 +71,14 @@
 
 <style>
   .panel {
-    padding: clamp(1rem, 2vw, 1.5rem);
+    /* Exposed as a custom property (inherited by anything nested inside,
+       across component boundaries — Svelte doesn't scope custom property
+       *values*, just selectors) so descendants can bleed edge-to-edge by
+       negating it, rather than duplicating this clamp() as a guessed fixed
+       value that would drift out of sync with it at other viewport
+       widths. See ObserverCard's .sequences for the consumer. */
+    --panel-padding: clamp(1rem, 2vw, 1.5rem);
+    padding: var(--panel-padding);
   }
 
   .panel-summary {

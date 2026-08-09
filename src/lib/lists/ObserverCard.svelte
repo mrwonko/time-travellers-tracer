@@ -181,6 +181,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    /* Bleed out to the edge of the observer's own outer panel (canceling
+       its padding, not this component's own — see the --panel-padding
+       comment in CollapsiblePanel.svelte) so a sequence fragment's width
+       is limited only by the observer box's own border, not by padding
+       meant for the title row and other non-sequence content. */
+    margin-inline: calc(var(--panel-padding, 0px) * -1);
     /* This panel can end up quite narrow (the right-hand column of the
        two-column layout). Scroll rather than clip if content genuinely
        can't compress further — but don't force a min-width, or every

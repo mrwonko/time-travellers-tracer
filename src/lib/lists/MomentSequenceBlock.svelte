@@ -118,8 +118,24 @@
 </ChamferBox>
 
 <style>
+  /* No side padding — the table's own cell padding already insets its
+     content, and this block is often the narrowest thing on the page (the
+     editor's right-hand column, further indented as a sequence within an
+     observer); reclaiming the extra wrapper padding is what keeps the
+     moments table from needing to scroll as early as it otherwise would. */
   :global(.sequence-block) {
-    padding: 0.75rem 0.9rem 0.9rem;
+    padding: 0.75rem 0 0.9rem;
+  }
+
+  /* A cyan frame (vs. the neutral gray hairline every other bordered box
+     in the editor uses — CollapsiblePanel, ObserverCard's own outer
+     border, etc.) is what visually marks "this box is one of an
+     observer's several sequence fragments" at a glance, distinct from
+     plain layout chrome. Compound selector so it beats chamfer-sm-
+     bordered's own `background` (both are single-class rules otherwise
+     tied on specificity — see ChamferBox.svelte). */
+  :global(.sequence-block.chamfer-sm-bordered) {
+    background: var(--color-accent-secondary);
   }
 
   .sequence-header {
@@ -128,6 +144,7 @@
     align-items: baseline;
     gap: 0.6rem;
     margin-bottom: 0.6rem;
+    padding: 0 0.9rem;
   }
 
   .sequence-label {
