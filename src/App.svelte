@@ -4,6 +4,7 @@
   import Editor from './routes/Editor.svelte';
   import ComponentLibrary from './routes/ComponentLibrary.svelte';
   import ToastHost from './lib/ToastHost.svelte';
+  import { initDragMonitor } from './lib/dnd/dragState.svelte';
 
   const routes: RouteDefinition = {
     '/': Landing,
@@ -12,6 +13,8 @@
     // tool only, reached by typing the URL directly.
     '/components': ComponentLibrary,
   };
+
+  initDragMonitor();
 </script>
 
 <Router {routes} />
