@@ -1,5 +1,5 @@
 <script module lang="ts">
-  export type IconName = 'plus' | 'edit' | 'x' | 'save' | 'chevron' | 'grip';
+  export type IconName = 'plus' | 'edit' | 'x' | 'save' | 'chevron' | 'grip' | 'download' | 'upload';
 
   // Square caps/miter joins (not round) to match the sharp-corner design
   // language — see design-language.md §Shape. 16x16 viewBox throughout.
@@ -23,6 +23,12 @@
       'M5.5 12.3 L5.5 12.7',
       'M10.5 12.3 L10.5 12.7',
     ],
+    // Arrow-into-tray glyphs for export/import — same straight-shaft +
+    // chevron-head + open-tray-outline primitives, arrow direction flipped
+    // between the two (download's tip sits at the shaft's bottom end,
+    // upload's at the top), so they read as a matched pair.
+    download: ['M8 3 L8 10', 'M4.5 6.5 L8 10 L11.5 6.5', 'M3 13 L13 13', 'M3 10.5 L3 13', 'M13 10.5 L13 13'],
+    upload: ['M8 3 L8 10', 'M4.5 6.5 L8 3 L11.5 6.5', 'M3 13 L13 13', 'M3 10.5 L3 13', 'M13 10.5 L13 13'],
   };
 </script>
 

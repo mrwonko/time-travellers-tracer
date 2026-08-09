@@ -3,7 +3,10 @@ import { generateId } from './id';
 export interface ToastEntry {
   id: string;
   message: string;
-  onUndo: () => void;
+  // Absent for a plain informational toast (e.g. "your saved story was
+  // corrupt, starting fresh") — there's nothing meaningful to undo, so
+  // UndoToast/ToastHost render without the UNDO button in that case.
+  onUndo?: () => void;
 }
 
 // Module-level runes store — deliberately not a context/provider, since
@@ -18,6 +21,10 @@ export function getToasts(): ToastEntry[] {
 
 export function pushUndo(message: string, onUndo: () => void): void {
   toasts.push({ id: generateId(), message, onUndo });
+}
+
+export function pushToast(message: string): void {
+  toasts.push({ id: generateId(), message });
 }
 
 export function dismiss(id: string): void {

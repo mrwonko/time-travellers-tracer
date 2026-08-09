@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { nativeDragDrop } from './dragDrop';
+import { gotoEditorWithDemoStory } from './seedDemoStory';
 
 // The original ask this whole drag-and-drop pass was built for: dragging
 // one sequence and dropping it *between* moments of another sequence
@@ -12,7 +13,7 @@ import { nativeDragDrop } from './dragDrop';
 test('dragging a sequence onto a moment in another sequence splices at that position, with an undo toast', async ({
   page,
 }) => {
-  await page.goto('/#/editor');
+  await gotoEditorWithDemoStory(page);
   await page.getByRole('heading', { name: 'Observers' }).waitFor();
 
   const summary = page.locator('summary').filter({ hasText: 'K. Voss' });

@@ -1,11 +1,16 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import ChamferBox from './ChamferBox.svelte';
 
   // Landing's page container already carries its own horizontal padding
   // (it's a constrained-width centered layout); Editor/ComponentLibrary
   // are full-width and need the bar to supply its own. Everything else
   // about the header is identical across all three pages.
-  let { tag, paddingX = 'clamp(1rem, 3vw, 3rem)' }: { tag: string; paddingX?: string } = $props();
+  let {
+    tag,
+    paddingX = 'clamp(1rem, 3vw, 3rem)',
+    children,
+  }: { tag: string; paddingX?: string; children?: Snippet } = $props();
 </script>
 
 <header class="bar" style="--page-header-px: {paddingX}">
@@ -13,7 +18,12 @@
     <ChamferBox tag="span" size="sm" bordered={false} class="page-header-mark" aria-hidden="true" />
     <span class="wordmark-text">TIME TRAVELLER'S TRACER</span>
   </div>
-  <span class="tag mono">{tag}</span>
+  <div class="header-actions">
+    <span class="tag mono">{tag}</span>
+    {#if children}
+      {@render children()}
+    {/if}
+  </div>
 </header>
 
 <style>
@@ -48,6 +58,12 @@
     font-weight: 600;
     letter-spacing: 0.04em;
     font-size: 0.95rem;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .tag {

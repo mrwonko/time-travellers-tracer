@@ -8,7 +8,7 @@
     durationMS = 6000,
   }: {
     message: string;
-    onUndo: () => void;
+    onUndo?: () => void;
     onDismiss: () => void;
     durationMS?: number;
   } = $props();
@@ -22,7 +22,9 @@
 <ChamferBox size="sm" class="undo-toast">
   <div class="undo-toast-inner" role="status">
     <span>{message}</span>
-    <button type="button" class="undo-action mono" onclick={onUndo}>UNDO</button>
+    {#if onUndo}
+      <button type="button" class="undo-action mono" onclick={onUndo}>UNDO</button>
+    {/if}
   </div>
 </ChamferBox>
 

@@ -11,11 +11,13 @@
   let {
     universe,
     eventCount,
+    deleteDisabled = false,
     onSave,
     onDelete,
   }: {
     universe: StoryUniverse;
     eventCount: number;
+    deleteDisabled?: boolean;
     onSave: (label: string | undefined) => void;
     onDelete: () => void;
   } = $props();
@@ -51,7 +53,12 @@
     <td class="mono">{eventCount}</td>
     <td class="actions">
       <IconButton icon="edit" label="Edit universe" onclick={startEdit} />
-      <IconButton icon="x" label="Delete universe" onclick={onDelete} />
+      <IconButton
+        icon="x"
+        label={deleteDisabled ? 'At least one universe is required' : 'Delete universe'}
+        onclick={onDelete}
+        disabled={deleteDisabled}
+      />
     </td>
   {/if}
 </tr>

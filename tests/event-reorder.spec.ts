@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { nativeDragDrop } from './dragDrop';
+import { gotoEditorWithDemoStory } from './seedDemoStory';
 
 // Drag-and-drop reorder of events within a moment — the third and final
 // nesting level. Unlike moment/sequence reorder, event order has no spec
@@ -8,7 +9,7 @@ import { nativeDragDrop } from './dragDrop';
 // moments each reference only one event), then drags the chips.
 
 test('dragging an event chip past a sibling reorders them, with no undo toast', async ({ page }) => {
-  await page.goto('/#/editor');
+  await gotoEditorWithDemoStory(page);
   await page.getByRole('heading', { name: 'Observers' }).waitFor();
 
   const summary = page.locator('summary').filter({ hasText: 'K. Voss' });

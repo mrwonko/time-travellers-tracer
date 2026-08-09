@@ -2,7 +2,7 @@
   import { generateId } from '../id';
   import IconButton from '../IconButton.svelte';
   import UniverseRow from './UniverseRow.svelte';
-  import { pushUndo } from '../toastQueue.svelte';
+  import { pushUndo, pushToast } from '../toastQueue.svelte';
   import type { StoryUniverse, StoryEvent } from '../types';
 
   let { universes = $bindable(), events }: { universes: StoryUniverse[]; events: StoryEvent[] } = $props();
@@ -26,6 +26,14 @@
   }
 
   function removeUniverse(id: string) {
+    // Event.universe is mandatory (spec §3) — a universe list can never go
+    // to zero, or the next event created would have nowhere valid to
+    // point (see persistence.ts's emptyStory(), which seeds exactly this
+    // one-universe floor for the same reason).
+    if (universes.length <= 1) {
+      pushToast('At least one universe is required — every event needs one.');
+      return;
+    }
     const index = universes.findIndex((u) => u.id === id);
     if (index === -1) return;
     const item = universes[index];
@@ -51,6 +59,7 @@
       <UniverseRow
         universe={u}
         eventCount={eventsInUniverse(u.id)}
+        deleteDisabled={universes.length <= 1}
         onSave={(label) => saveUniverse(u.id, label)}
         onDelete={() => removeUniverse(u.id)}
       />
