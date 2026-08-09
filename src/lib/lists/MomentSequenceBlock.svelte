@@ -64,10 +64,7 @@
     onHoverChange: (edge: Edge | null) => void;
   } = $props();
 
-  // Deliberately just a one-time default, like ObserverCard's own
-  // newMomentEvents — doesn't need to track later changes to eventOptions.
-  // svelte-ignore state_referenced_locally
-  let newMomentEvents = $state<string[]>(eventOptions[0] ? [eventOptions[0].id] : []);
+  let newMomentEvents = $state<string[]>([]);
   let newMomentDirection = $state<'forward' | 'inverted'>('forward');
   function addMoment() {
     if (!newMomentEvents.length) return;
@@ -237,7 +234,14 @@
   <div class="add-moment">
     <MultiSelectCombobox options={eventOptions} bind:selected={newMomentEvents} placeholder="Events…" />
     <DirectionToggle bind:direction={newMomentDirection} />
-    <IconButton icon="plus" label="Add moment" variant="accent" size="sm" onclick={addMoment} />
+    <IconButton
+      icon="plus"
+      label="Add moment"
+      variant="accent"
+      size="sm"
+      onclick={addMoment}
+      disabled={!newMomentEvents.length}
+    />
   </div>
 
   <!-- The trailing counterpart to the header above — "insert after this
