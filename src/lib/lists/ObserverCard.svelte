@@ -15,7 +15,7 @@
   import MomentSequenceBlock from './MomentSequenceBlock.svelte';
   import { pushUndo } from '../toastQueue.svelte';
   import { moveWithinList, spliceListInto, type Edge } from '../reorder';
-  import type { StoryObserver, StoryEvent, Moment, MomentID, SequenceID } from '../types';
+  import type { StoryObserver, StoryEvent, Moment, MomentID, SequenceID, EventID } from '../types';
 
   let {
     observer,
@@ -125,6 +125,34 @@
     observer.sequences = moveWithinList(observer.sequences, draggedId, targetId, edge);
   }
 
+  // Event order within a moment has no spec meaning (Moment.events is a
+  // set) — reordering here is cosmetic consistency with the other two
+  // levels, not a data-meaningful edit, so unlike reorderMoments there's
+  // no undo toast. It's still persisted (the array order is what's
+  // stored and displayed), just not undo-guarded.
+  function reorderEvents(seqId: SequenceID, momentId: MomentID, draggedEventId: EventID, targetEventId: EventID, edge: Edge) {
+    observer.sequences = observer.sequences.map((s) =>
+      s.id !== seqId
+        ? s
+        : {
+            ...s,
+            moments: s.moments.map((m) =>
+              m.id !== momentId
+                ? m
+                : {
+                    ...m,
+                    events: moveWithinList(
+                      m.events.map((id) => ({ id })),
+                      draggedEventId,
+                      targetEventId,
+                      edge,
+                    ).map((e) => e.id),
+                  },
+            ),
+          },
+    );
+  }
+
   // Splices the dragged sequence's moments into the target sequence at the
   // position implied by targetMomentId/edge (null/null = append, for the
   // empty-target-sequence drop case), then removes the now-empty source
@@ -185,6 +213,8 @@
         onMergeInto={(sourceId, targetMomentId, edge) => mergeInto(sourceId, sequence.id, targetMomentId, edge)}
         onReorderMoments={(draggedId, targetId, edge) => reorderMoments(sequence.id, draggedId, targetId, edge)}
         onReorderSequences={(draggedId, targetId, edge) => reorderSequences(draggedId, targetId, edge)}
+        onReorderEvents={(momentId, draggedId, targetId, edge) =>
+          reorderEvents(sequence.id, momentId, draggedId, targetId, edge)}
       />
     {/each}
     <IconButton icon="plus" label="Add sequence" variant="accent" size="sm" onclick={addSequence} />

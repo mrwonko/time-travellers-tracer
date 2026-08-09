@@ -16,7 +16,7 @@
   import EventChip from './EventChip.svelte';
   import DragHandle from '../dnd/DragHandle.svelte';
   import { dropBox, type DragBoxData } from '../dnd/actions';
-  import type { Moment, MomentID, SequenceID } from '../types';
+  import type { Moment, MomentID, SequenceID, EventID } from '../types';
   import type { Edge } from '../reorder';
 
   let {
@@ -29,6 +29,7 @@
     onDelete,
     onReorder,
     onMergeInto,
+    onReorderEvents,
   }: {
     moment: Moment;
     index: number;
@@ -39,6 +40,7 @@
     onDelete: () => void;
     onReorder: (draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) => void;
     onMergeInto: (sourceSequenceId: SequenceID, targetMomentId: MomentID, edge: Edge) => void;
+    onReorderEvents: (draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
   } = $props();
 
   const dragData: DragBoxData = $derived({ level: 'moment', id: moment.id, containerId: sequenceId });
@@ -112,7 +114,12 @@
       {:else}
         <div class="moment-events">
           {#each moment.events as eventId (eventId)}
-            <EventChip label={eventLabel(eventId)} />
+            <EventChip
+              {eventId}
+              momentId={moment.id}
+              label={eventLabel(eventId)}
+              onReorder={(draggedId, targetId, edge) => onReorderEvents(draggedId, targetId, edge)}
+            />
           {/each}
         </div>
         <DirectionBadge direction={moment.direction} />

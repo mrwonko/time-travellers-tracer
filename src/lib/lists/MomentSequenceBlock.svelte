@@ -15,7 +15,7 @@
   import MomentBox from './MomentBox.svelte';
   import DragHandle from '../dnd/DragHandle.svelte';
   import { dropBox, type DragBoxData } from '../dnd/actions';
-  import type { MomentSequence, Moment, MomentID, SequenceID } from '../types';
+  import type { MomentSequence, Moment, MomentID, SequenceID, EventID } from '../types';
   import type { Edge } from '../reorder';
 
   let {
@@ -30,6 +30,7 @@
     onMergeInto,
     onReorderMoments,
     onReorderSequences,
+    onReorderEvents,
   }: {
     sequence: MomentSequence;
     label: string;
@@ -42,6 +43,7 @@
     onMergeInto: (sourceSequenceId: SequenceID, targetMomentId: MomentID | null, edge: Edge | null) => void;
     onReorderMoments: (draggedMomentId: MomentID, targetMomentId: MomentID, edge: Edge) => void;
     onReorderSequences: (draggedSequenceId: SequenceID, targetSequenceId: SequenceID, edge: Edge) => void;
+    onReorderEvents: (momentId: MomentID, draggedEventId: EventID, targetEventId: EventID, edge: Edge) => void;
   } = $props();
 
   // Deliberately just a one-time default, like ObserverCard's own
@@ -125,6 +127,7 @@
           onDelete={() => onDeleteMoment(moment.id)}
           onReorder={(draggedId, targetId, edge) => onReorderMoments(draggedId, targetId, edge)}
           onMergeInto={(sourceSeqId, targetMomentId, edge) => onMergeInto(sourceSeqId, targetMomentId, edge)}
+          onReorderEvents={(draggedId, targetId, edge) => onReorderEvents(moment.id, draggedId, targetId, edge)}
         />
       {/each}
     </div>
