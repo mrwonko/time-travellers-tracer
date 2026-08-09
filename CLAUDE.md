@@ -25,6 +25,18 @@ npm run preview   # serve the production build locally
 npm run check     # type-check: svelte-check + tsc, no separate lint script
 ```
 
+`npm run check` (`svelte-check`) has a parser bug distinct from the real
+Svelte compiler: a `<script>` block whose comment contains the literal
+text `<style>` (e.g. "see the `<style>` block below") can make it
+misreport `` `<script>` was left open ``, cascading into bogus "has no
+default export" errors on every file that imports the affected component
+— even though `npm run build`/`npm run dev` compile it fine. Confirmed by
+bisection 2026-08-09 (see PR #2 review thread on `ChamferBox.svelte`).
+Avoid literal `<script>`/`<style>` substrings inside comments in
+`<script>` blocks; if `npm run check` ever reports a nonsensical
+open/unclosed-tag error, suspect this before assuming the code is wrong —
+cross-check against `npm run build`, which uses the real compiler.
+
 No test suite yet (deliberately deferred — see memory on Playwright
 testing plan: add real tests once there's meaningful editor functionality,
 not for the landing page alone).
