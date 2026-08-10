@@ -21,6 +21,15 @@ hand-written bash one-liner each time, it's the thing to grant standing
 ("always allow") permission for, rather than approving a new inline
 command on every run.
 
+`.claude/skills/dev-server/start.sh --restart` kills whatever's already
+on the port first, then starts fresh, instead of the multi-step
+`lsof | xargs kill && sleep && start.sh` sequence. Reach for this before
+trusting a live-browser repro that contradicts the code or test suite —
+especially before concluding a failing test is pre-existing/unrelated to
+current changes — if the server's been running through many edits this
+session; a stale Vite/HMR module graph can make old code misbehave in
+ways a fresh start won't reproduce.
+
 Routes are hash-based (`svelte-spa-router`) — the `#` is required:
 - `/#/` — landing page
 - `/#/editor` — the story editor
