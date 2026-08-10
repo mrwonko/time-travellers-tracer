@@ -21,7 +21,7 @@
   let dropUp = $state(false);
   let popoverMaxHeight = $state<number | undefined>(undefined);
 
-  // A single editingId (not a row-scoped component, unlike UniverseRow) is
+  // A single editingId (not a row-scoped component, unlike TimelineRow) is
   // enough here: this is a small, transient popover list where realistically
   // one entry is renamed at a time, and closing the popover (light-dismiss)
   // already discards any in-progress edit.
@@ -85,7 +85,7 @@
   }
 
   // Whole-story deletion is real data loss (unlike a reorder), so it gets
-  // the same undo-toast treatment as Universe/Event/Observer deletes
+  // the same undo-toast treatment as Timeline/Event/Observer deletes
   // rather than a confirm() dialog.
   function handleDelete(id: string) {
     const deleted = deleteStory(id);

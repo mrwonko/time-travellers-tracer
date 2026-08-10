@@ -1,7 +1,7 @@
 <script lang="ts">
   import IconButton from '../IconButton.svelte';
   import UuidTag from '../UuidTag.svelte';
-  import type { StoryUniverse } from '../types';
+  import type { StoryTimeline } from '../types';
 
   // Row-scoped edit state (not a list-level `editingId`) is what lets
   // multiple rows be edited simultaneously without one edit stomping
@@ -9,13 +9,13 @@
   // instance, so its `editing`/`editLabel` state is naturally
   // independent of every other row's.
   let {
-    universe,
+    timeline,
     eventCount,
     deleteDisabled = false,
     onSave,
     onDelete,
   }: {
-    universe: StoryUniverse;
+    timeline: StoryTimeline;
     eventCount: number;
     deleteDisabled?: boolean;
     onSave: (label: string | undefined) => void;
@@ -26,11 +26,11 @@
   let editLabel = $state('');
 
   function startEdit() {
-    editLabel = universe.label ?? '';
+    editLabel = timeline.label ?? '';
     editing = true;
   }
   function save() {
-    onSave(editLabel.trim() || universe.label);
+    onSave(editLabel.trim() || timeline.label);
     editing = false;
   }
   function cancel() {
@@ -45,17 +45,17 @@
     </td>
     <td class="mono">{eventCount}</td>
     <td class="actions">
-      <IconButton icon="save" label="Save universe" onclick={save} />
+      <IconButton icon="save" label="Save timeline" onclick={save} />
       <IconButton icon="x" label="Cancel edit" onclick={cancel} />
     </td>
   {:else}
-    <td>{universe.label} <UuidTag id={universe.id} /></td>
+    <td>{timeline.label} <UuidTag id={timeline.id} /></td>
     <td class="mono">{eventCount}</td>
     <td class="actions">
-      <IconButton icon="edit" label="Edit universe" onclick={startEdit} />
+      <IconButton icon="edit" label="Edit timeline" onclick={startEdit} />
       <IconButton
         icon="x"
-        label={deleteDisabled ? 'At least one universe is required' : 'Delete universe'}
+        label={deleteDisabled ? 'At least one timeline is required' : 'Delete timeline'}
         onclick={onDelete}
         disabled={deleteDisabled}
       />

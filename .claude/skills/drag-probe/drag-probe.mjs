@@ -114,7 +114,7 @@ if (args.help || !args.url || !args.source) {
       '                         Handler fixture, instead of the empty',
       '                         first-run story',
       '  --seed-file <path>     seed a custom { events, observers,',
-      '                         universes } JSON file instead of a preset',
+      '                         timelines } JSON file instead of a preset',
       '  --width N / --height N viewport size (default 1280x900)',
       '  --wait-for <sel>       wait for a selector before starting the drag',
       '  --click <selector>     (repeatable) click before starting the drag,',

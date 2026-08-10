@@ -46,7 +46,7 @@ technical/instrument-panel typographic register.
 - One **secondary saturated accent** for informational/secondary state:
   **electric cyan**.
 - A wider set of saturated hues is reserved, unused elsewhere in the
-  editor, specifically for future per-universe/branch coloring in the graph
+  editor, specifically for future per-timeline/branch coloring in the graph
   view (spec §8 open question 8) — so the palette scales into that later
   without a redesign.
 

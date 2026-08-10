@@ -11,7 +11,7 @@ for the visual direction, and [`CLAUDE.md`](./CLAUDE.md) for a
 project-status summary.
 
 Currently in **Phase 1**: the story editor (author/edit events, observers,
-universes, moments), no chart yet — see spec §11.
+timelines, moments), no chart yet — see spec §11.
 
 ## Development
 

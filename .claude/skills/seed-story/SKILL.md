@@ -15,7 +15,7 @@ wrong (typo'd labels, wrong predecessor, etc).
 import { seedStory } from '../seed-story/seed-story.mjs';
 
 const page = await browser.newPage();
-await seedStory(page, 'demo');           // or a raw { events, observers, universes } object
+await seedStory(page, 'demo');           // or a raw { events, observers, timelines } object
 await page.goto('http://localhost:8080/#/editor');
 ```
 
@@ -34,7 +34,7 @@ node .claude/skills/screenshot/screenshot.mjs --url ... --seed demo --out ...
 ```
 
 `--seed-file <path.json>` loads a custom `{ events, observers,
-universes }` file instead of a named preset — e.g. for a bespoke
+timelines }` file instead of a named preset — e.g. for a bespoke
 stress-test story (many events, to check layout at scale) that isn't
 worth baking in as a permanent preset. Write the JSON with a throwaway
 script or by hand, point `--seed-file` at it, delete it when done.

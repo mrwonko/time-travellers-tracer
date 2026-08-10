@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { CURRENT_SCHEMA_VERSION } from '../src/lib/persistence';
 
 // Covers what a component-level browser test can't: real localStorage
 // persistence across a page reload, and the file download/upload mechanics
@@ -38,7 +39,7 @@ test.describe('story persistence', () => {
     const path = await download.path();
     if (!path) throw new Error('download has no path');
     const contents = JSON.parse(readFileSync(path, 'utf-8'));
-    expect(contents.schemaVersion).toBe(1);
+    expect(contents.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(contents.story.events.some((e: { label: string }) => e.label === label)).toBe(true);
   });
 
@@ -50,11 +51,11 @@ test.describe('story persistence', () => {
 
     const importedLabel = 'Imported-only event';
     const doc = {
-      schemaVersion: 1,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       story: {
-        events: [{ id: 'e1', label: importedLabel, predecessors: [], universe: 'u1' }],
+        events: [{ id: 'e1', label: importedLabel, predecessors: [], timeline: 'u1' }],
         observers: [],
-        universes: [{ id: 'u1', label: 'Prime' }],
+        timelines: [{ id: 'u1', label: 'Prime' }],
       },
     };
     await page.locator('input[type="file"]').setInputFiles({

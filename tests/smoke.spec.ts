@@ -17,7 +17,7 @@ test('all three routes render without console errors', async ({ page }) => {
 
   await page.goto('/#/editor');
   await expect(page.getByRole('heading', { name: 'Events' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Universes' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Timelines' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Observers' })).toBeVisible();
 
   await page.goto('/#/components');

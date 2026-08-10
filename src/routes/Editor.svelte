@@ -4,7 +4,7 @@
   import PageHeader from '../lib/PageHeader.svelte';
   import StoryToolbar from '../lib/StoryToolbar.svelte';
   import StoryPicker from '../lib/StoryPicker.svelte';
-  import UniverseList from '../lib/lists/UniverseList.svelte';
+  import TimelineList from '../lib/lists/TimelineList.svelte';
   import EventList from '../lib/lists/EventList.svelte';
   import ObserverList from '../lib/lists/ObserverList.svelte';
   import { story, registry, activeStoryId, switchToStory } from '../lib/story.svelte';
@@ -38,12 +38,12 @@
 
   <main class="layout">
     <CollapsiblePanel title="Events" count={story.events.length} capHeight>
-      <EventList bind:events={story.events} universes={story.universes} />
+      <EventList bind:events={story.events} timelines={story.timelines} />
     </CollapsiblePanel>
 
     <div class="col-side">
-      <CollapsiblePanel title="Universes" count={story.universes.length} capHeight>
-        <UniverseList bind:universes={story.universes} events={story.events} />
+      <CollapsiblePanel title="Timelines" count={story.timelines.length} capHeight>
+        <TimelineList bind:timelines={story.timelines} events={story.events} />
       </CollapsiblePanel>
 
       <CollapsiblePanel title="Observers" count={story.observers.length} capHeight>
@@ -92,7 +92,7 @@
     gap: inherit;
   }
 
-  /* The right column (Universes/Observers) carries data-tables with a UUID
+  /* The right column (Timelines/Observers) carries data-tables with a UUID
      column and multiple action buttons per row — content that doesn't
      compress much further before it clips (verified by survey: still
      clipping as late as ~1150px, clean by 1200px). Rather than chase the

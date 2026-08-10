@@ -84,7 +84,7 @@ if (args.help || !args.url || !args.out) {
       '                         Handler fixture, instead of the empty',
       '                         first-run story',
       '  --seed-file <path>     seed a custom { events, observers,',
-      '                         universes } JSON file instead of a preset',
+      '                         timelines } JSON file instead of a preset',
       '  --width N              viewport width (default 1280)',
       '  --height N             viewport height (default 900)',
       '  --wait-for <sel>       wait for a selector before doing anything else',

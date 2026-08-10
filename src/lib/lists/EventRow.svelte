@@ -3,7 +3,7 @@
   import UuidTag from '../UuidTag.svelte';
   import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import DragHandle from '../dnd/DragHandle.svelte';
-  import type { StoryEvent, StoryUniverse } from '../types';
+  import type { StoryEvent, StoryTimeline } from '../types';
 
   // Row-scoped edit state (not a list-level `editingId`) is what lets
   // multiple rows be edited simultaneously without one edit stomping
@@ -13,22 +13,22 @@
   let {
     event,
     events,
-    universes,
+    timelines,
     onSave,
     onDelete,
   }: {
     event: StoryEvent;
     events: StoryEvent[];
-    universes: StoryUniverse[];
-    onSave: (patch: { label: string; description: string | undefined; universe: string; predecessors: string[] }) => void;
+    timelines: StoryTimeline[];
+    onSave: (patch: { label: string; description: string | undefined; timeline: string; predecessors: string[] }) => void;
     onDelete: () => void;
   } = $props();
 
   function eventLabel(id: string): string {
     return events.find((e) => e.id === id)?.label || '(untitled event)';
   }
-  function universeLabel(id: string): string {
-    return universes.find((u) => u.id === id)?.label || '(unlabeled universe)';
+  function timelineLabel(id: string): string {
+    return timelines.find((u) => u.id === id)?.label || '(unlabeled timeline)';
   }
 
   // Excludes this event from its own predecessor options — a direct
@@ -42,13 +42,13 @@
   let editing = $state(false);
   let editLabel = $state('');
   let editDescription = $state('');
-  let editUniverse = $state('');
+  let editTimeline = $state('');
   let editPredecessors = $state<string[]>([]);
 
   function startEdit() {
     editLabel = event.label;
     editDescription = event.description ?? '';
-    editUniverse = event.universe;
+    editTimeline = event.timeline;
     editPredecessors = [...event.predecessors];
     editing = true;
   }
@@ -56,7 +56,7 @@
     onSave({
       label: editLabel.trim() || event.label,
       description: editDescription.trim() || undefined,
-      universe: editUniverse,
+      timeline: editTimeline,
       predecessors: editPredecessors,
     });
     editing = false;
@@ -81,8 +81,8 @@
       />
     </td>
     <td>
-      <select class="field" bind:value={editUniverse}>
-        {#each universes as u (u.id)}
+      <select class="field" bind:value={editTimeline}>
+        {#each timelines as u (u.id)}
           <option value={u.id}>{u.label}</option>
         {/each}
       </select>
@@ -109,7 +109,7 @@
         <span class="muted">&mdash;</span>
       {/if}
     </td>
-    <td>{universeLabel(event.universe)}</td>
+    <td>{timelineLabel(event.timeline)}</td>
     <td>
       {#if event.predecessors.length === 0}
         <span class="muted">&mdash;</span>

@@ -22,11 +22,11 @@ export function demoStory(): Story {
   const e3 = generateId();
 
   return {
-    universes: [{ id: primeId, label: 'Prime' }],
+    timelines: [{ id: primeId, label: 'Prime' }],
     events: [
-      { id: e1, label: 'Signal received at the depot', predecessors: [], universe: primeId },
-      { id: e2, label: 'Handoff at the overpass', predecessors: [e1], universe: primeId },
-      { id: e3, label: 'Depot burns', predecessors: [e2], universe: primeId },
+      { id: e1, label: 'Signal received at the depot', predecessors: [], timeline: primeId },
+      { id: e2, label: 'Handoff at the overpass', predecessors: [e1], timeline: primeId },
+      { id: e3, label: 'Depot burns', predecessors: [e2], timeline: primeId },
     ],
     observers: [
       {

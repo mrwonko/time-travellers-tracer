@@ -68,12 +68,12 @@ saving the image — check that before assuming a screenshot "looks right"
 is actually right; a page can render its shell while something underneath
 threw or 404'd.
 
-Example — add a universe and confirm it shows up:
+Example — add a timeline and confirm it shows up:
 ```
 node .claude/skills/screenshot/screenshot.mjs \
-  --url "http://localhost:8080/#/editor" --wait-for "text=Universes" \
-  --fill 'input[placeholder="New universe label…"]::Backup' \
-  --click 'button[aria-label="Add universe"]' \
+  --url "http://localhost:8080/#/editor" --wait-for "text=Timelines" \
+  --fill 'input[placeholder="New timeline label…"]::Backup' \
+  --click 'button[aria-label="Add timeline"]' \
   --wait-after 'text=Backup' \
   --out /tmp/after-add.png
 ```
