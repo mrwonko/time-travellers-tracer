@@ -1,73 +1,48 @@
-// Data model per time-travel-viz-spec.md §3. Types only — no persistence
-// yet (spec §11 Phase 1, first slice: entry masks before the storage layer).
+// Data model per time-travel-viz-spec.md §3. These are z.infer<> aliases
+// of the *current* schema version's zod schema (schema/v1.ts today) —
+// the schema module is the single source of truth for the shape, this
+// file just names the current version's inferred types for the rest of
+// the app to import, so the shape isn't hand-duplicated here too. See
+// schema/versions.ts for the full version history and persistence.ts for
+// how older versions get migrated forward to this one.
+import type { z } from 'zod';
+import type {
+  universeIdV1Schema,
+  eventIdV1Schema,
+  observerIdV1Schema,
+  momentIdV1Schema,
+  sequenceIdV1Schema,
+  storyUniverseV1Schema,
+  storyEventV1Schema,
+  momentV1Schema,
+  momentSequenceV1Schema,
+  storyObserverV1Schema,
+  storyV1Schema,
+} from './schema/v1.ts';
 
-export type UniverseID = string;
-export type EventID = string;
-export type ObserverID = string;
-export type MomentID = string;
-export type SequenceID = string;
+export type UniverseID = z.infer<typeof universeIdV1Schema>;
+export type EventID = z.infer<typeof eventIdV1Schema>;
+export type ObserverID = z.infer<typeof observerIdV1Schema>;
+export type MomentID = z.infer<typeof momentIdV1Schema>;
+export type SequenceID = z.infer<typeof sequenceIdV1Schema>;
 
-export interface StoryUniverse {
-  id: UniverseID;
-  label?: string;
-}
+export type StoryUniverse = z.infer<typeof storyUniverseV1Schema>;
 
-export interface StoryEvent {
-  id: EventID;
-  label: string;
-  // Free text for now (e.g. local time-of-day, other notes) — separate
-  // from `label`, which is the short display name used everywhere else
-  // (predecessor lists, moment displays). Not used by any algorithm,
-  // same spirit as `label` itself.
-  description?: string;
-  predecessors: EventID[];
-  universe: UniverseID;
-}
+// `description` is free text (e.g. local time-of-day, other notes) —
+// separate from `label`, which is the short display name used everywhere
+// else (predecessor lists, moment displays). Not used by any algorithm,
+// same spirit as `label` itself.
+export type StoryEvent = z.infer<typeof storyEventV1Schema>;
 
-export interface Moment {
-  id: MomentID;
-  events: EventID[];
-  direction: 'forward' | 'inverted';
-}
+export type Moment = z.infer<typeof momentV1Schema>;
 
 // A fragment of an observer's personal order. An observer can have more
 // than one — spec §2/§3 — because a moment is often recorded before its
 // position relative to that observer's *other* recorded moments is known.
 // Relative order between an observer's sequences is unknown until merged
 // into one.
-export interface MomentSequence {
-  id: SequenceID;
-  moments: Moment[];
-}
+export type MomentSequence = z.infer<typeof momentSequenceV1Schema>;
 
-export interface StoryObserver {
-  id: ObserverID;
-  name: string;
-  sequences: MomentSequence[];
-}
+export type StoryObserver = z.infer<typeof storyObserverV1Schema>;
 
-export interface Story {
-  events: StoryEvent[];
-  observers: StoryObserver[];
-  universes: StoryUniverse[];
-}
-
-// --- Compile-time parity check against schema/v1.ts ----------------------
-// Proves the hand-written Story above and schema/v1.ts's zod-inferred
-// shape describe exactly the same type — checked both directions, since
-// TS assignability alone is one-directional (e.g. an extra optional field
-// on one side wouldn't otherwise be caught). If schema/v1.ts is missing a
-// field, has an extra one, or types one differently, one of the two
-// `satisfies` checks below fails to compile. Structural typing makes this
-// recursive, so checking the top-level Story is enough to cover every
-// nested type (StoryEvent, Moment, etc.) too — no need to repeat this
-// per sub-type. Deleted in the next commit, which replaces Story et al.
-// with the inferred type directly — at that point there's nothing left to
-// compare against.
-import type { z } from 'zod';
-import type { storyV1Schema } from './schema/v1.ts';
-
-declare const _storyValue: Story;
-_storyValue satisfies z.infer<typeof storyV1Schema>;
-declare const _storyFromSchema: z.infer<typeof storyV1Schema>;
-_storyFromSchema satisfies Story;
+export type Story = z.infer<typeof storyV1Schema>;
