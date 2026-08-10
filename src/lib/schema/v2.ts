@@ -68,9 +68,10 @@ export const storedDocumentV2Schema = z.object({
 
 // Each version's own upgrade-from-the-previous-version step lives with
 // that version's schema, rather than in persistence.ts, so the two stay
-// next to each other — persistence.ts just dispatches to whichever of
-// these applies (see its migrate()). A pure field rename, no other shape
-// change, so this is a straight remap rather than a real transformation.
+// next to each other — collected into schema/versions.ts's UPGRADES,
+// which persistence.ts's migrate() walks generically. A pure field
+// rename, no other shape change, so this is a straight remap rather than
+// a real transformation.
 export function upgradeV1ToV2(
   doc: z.infer<typeof storedDocumentV1Schema>,
 ): z.infer<typeof storedDocumentV2Schema> {
