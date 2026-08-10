@@ -13,11 +13,18 @@
     "moduleDetection": "force",
     "noEmit": true,
 
+    /* allowJs (not checkJs) so the plain-JS Playwright helper scripts
+       under .claude/skills/ can be included below without requiring
+       every script in that tree to be TS-clean — checking is opt-in per
+       file via a `// @ts-check` pragma (see seed-story.mjs), not
+       blanket-enabled. */
+    "allowJs": true,
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", ".claude/skills/seed-story/seed-story.mjs"]
 }

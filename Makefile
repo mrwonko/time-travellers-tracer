@@ -1,5 +1,6 @@
 check:
 	npx svelte-check --tsconfig ./tsconfig.app.json
+	npx tsc -p tsconfig.node.json
 
 test-unit:
 	npx vitest run
