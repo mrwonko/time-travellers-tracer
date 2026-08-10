@@ -6,7 +6,8 @@
 import { z } from 'zod';
 import { generateId } from './id';
 import type { Story } from './types';
-import { SCHEMA_VERSIONS, UPGRADES } from './schema/versions';
+import { SCHEMA_VERSIONS } from './schema/versions';
+import { upgradeV1ToV2 } from './schema/v2';
 
 export const CURRENT_SCHEMA_VERSION = 2 as const;
 
@@ -40,34 +41,24 @@ export function serializeStory(story: Story): string {
 }
 
 // Walks a parsed document forward one schemaVersion at a time (v1→v2→...)
-// until it reaches CURRENT_SCHEMA_VERSION, driven entirely by
-// SCHEMA_VERSIONS/UPGRADES (schema/versions.ts) — adding a version never
-// touches this function, only that data.
+// until it reaches CURRENT_SCHEMA_VERSION, via each version's own named
+// upgrade-to-next function (kept with that version's schema — e.g.
+// upgradeV1ToV2 lives in schema/v2.ts).
 //
-// UPGRADES's own elements are typed `(doc: never) => unknown` (see its
-// comment) specifically so this loop can index into it generically without
-// widening any individual upgrade function — but that means this function
-// can't statically know it's calling the *right* one for `current`'s
-// actual version. Rather than paper over that with an `as` cast (a claim
-// with nothing backing it up), re-validate the result against the full
-// schema union via storedDocumentSchema.parse() — a real check, so a
-// wrong/buggy upgrade step still fails loudly right here instead of
-// silently producing a malformed Story.
+// This is deliberately an explicit `if` per version, not a generic lookup
+// over an array/map of upgrade functions: narrowing `doc` via the literal
+// `schemaVersion` check is the only way TypeScript can prove each call is
+// safe, so every alternative that tried to make this fully data-driven
+// either failed to compile honestly, or silently degraded to `any` and
+// stopped checking anything at all (both explored and rejected — see PR
+// discussion). One `if` per version is the real cost of that guarantee;
+// with every version handled, `doc` narrows to `never` below, so a future
+// version left unhandled is a compile error here, not just a runtime one.
 function migrate(doc: StoredDocument): Story {
-  let current: StoredDocument = doc;
-  while (current.schemaVersion < CURRENT_SCHEMA_VERSION) {
-    const upgrade = UPGRADES[current.schemaVersion - 1];
-    if (!upgrade) throw new Error(`No upgrade path from schemaVersion ${current.schemaVersion}`);
-    current = storedDocumentSchema.parse(upgrade(current as never));
-  }
-  // Re-checked (not asserted) for the same reason as inside the loop: the
-  // while condition proves this to *us*, but not to the type checker, so
-  // this turns that proof into one it can actually verify, narrowing
-  // `current` properly instead of needing a cast on the return below.
-  if (current.schemaVersion !== CURRENT_SCHEMA_VERSION) {
-    throw new Error(`migrate() exited early at schemaVersion ${current.schemaVersion}`);
-  }
-  return current.story;
+  if (doc.schemaVersion === CURRENT_SCHEMA_VERSION) return doc.story;
+  if (doc.schemaVersion === 1) return migrate(upgradeV1ToV2(doc));
+  const unhandled: never = doc;
+  throw new Error(`No upgrade path from schemaVersion ${JSON.stringify(unhandled)}`);
 }
 
 export function parseStoredDocument(raw: string): Story {
