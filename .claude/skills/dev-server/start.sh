@@ -11,6 +11,14 @@
 # module graph before trusting it over the code/tests (see this
 # project's own memory on that: a live bug that a restart alone resolved
 # turned out to be stale Vite/HMR state, not a real regression).
+#
+# Every curl health-check below carries --max-time 2: without it, a
+# single hung connection attempt (seen once right after a full machine
+# reboot — the loopback interface took a while to come back up, well
+# after Vite itself had already logged "ready") can block one poll
+# iteration indefinitely, turning the intended ~30s timeout into an
+# unbounded wait instead of the fast fail-and-retry this loop is meant
+# to do.
 set -euo pipefail
 
 PORT=8080
@@ -22,11 +30,11 @@ if [[ "${1:-}" == "--restart" ]]; then
     echo "Stopping existing dev server…"
     lsof -ti:${PORT} -sTCP:LISTEN | xargs -r kill
     for _ in $(seq 1 10); do
-      curl -sf "http://localhost:${PORT}" >/dev/null 2>&1 || break
+      curl -sf --max-time 2 "http://localhost:${PORT}" >/dev/null 2>&1 || break
       sleep 1
     done
   fi
-elif curl -sf "http://localhost:${PORT}" >/dev/null 2>&1; then
+elif curl -sf --max-time 2 "http://localhost:${PORT}" >/dev/null 2>&1; then
   echo "Dev server already running at http://localhost:${PORT}"
   exit 0
 fi
@@ -37,7 +45,7 @@ nohup npm run dev > "$LOG_FILE" 2>&1 &
 disown
 
 for _ in $(seq 1 30); do
-  if curl -sf "http://localhost:${PORT}" >/dev/null 2>&1; then
+  if curl -sf --max-time 2 "http://localhost:${PORT}" >/dev/null 2>&1; then
     echo "Dev server up at http://localhost:${PORT}"
     exit 0
   fi
