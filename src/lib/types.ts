@@ -51,3 +51,23 @@ export interface Story {
   observers: StoryObserver[];
   universes: StoryUniverse[];
 }
+
+// --- Compile-time parity check against schema/v1.ts ----------------------
+// Proves the hand-written Story above and schema/v1.ts's zod-inferred
+// shape describe exactly the same type — checked both directions, since
+// TS assignability alone is one-directional (e.g. an extra optional field
+// on one side wouldn't otherwise be caught). If schema/v1.ts is missing a
+// field, has an extra one, or types one differently, one of the two
+// `satisfies` checks below fails to compile. Structural typing makes this
+// recursive, so checking the top-level Story is enough to cover every
+// nested type (StoryEvent, Moment, etc.) too — no need to repeat this
+// per sub-type. Deleted in the next commit, which replaces Story et al.
+// with the inferred type directly — at that point there's nothing left to
+// compare against.
+import type { z } from 'zod';
+import type { storyV1Schema } from './schema/v1.ts';
+
+declare const _storyValue: Story;
+_storyValue satisfies z.infer<typeof storyV1Schema>;
+declare const _storyFromSchema: z.infer<typeof storyV1Schema>;
+_storyFromSchema satisfies Story;
