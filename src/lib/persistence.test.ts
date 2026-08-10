@@ -68,7 +68,7 @@ describe('parseStoredDocument error handling', () => {
   });
 
   test('throws when the top level is not an object', () => {
-    expect(() => parseStoredDocument('42')).toThrow(/not an object/);
+    expect(() => parseStoredDocument('42')).toThrow(/expected object/);
   });
 
   test('throws when schemaVersion is missing', () => {
@@ -76,17 +76,17 @@ describe('parseStoredDocument error handling', () => {
   });
 
   test('throws when story is missing', () => {
-    expect(() => parseStoredDocument(JSON.stringify({ schemaVersion: 1 }))).toThrow(/story field/);
+    expect(() => parseStoredDocument(JSON.stringify({ schemaVersion: 1 }))).toThrow(/at story/);
   });
 
   test('throws when story fields are not arrays', () => {
     const raw = JSON.stringify({ schemaVersion: 1, story: { events: {}, observers: [], universes: [] } });
-    expect(() => parseStoredDocument(raw)).toThrow(/malformed/);
+    expect(() => parseStoredDocument(raw)).toThrow(/expected array/);
   });
 
   test('throws on an unknown/future schemaVersion', () => {
     const raw = JSON.stringify({ schemaVersion: 999, story: sampleStory });
-    expect(() => parseStoredDocument(raw)).toThrow(/Unsupported/);
+    expect(() => parseStoredDocument(raw)).toThrow(/Invalid discriminator/);
   });
 });
 

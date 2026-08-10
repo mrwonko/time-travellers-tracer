@@ -3,10 +3,12 @@
 // serialize/parse/migrate logic only — no localStorage access here, so this
 // is plain-Node testable like id.ts; see story.svelte.ts for the reactive
 // store that actually reads/writes localStorage using these functions.
+import { z } from 'zod';
 import { generateId } from './id';
 import type { Story } from './types';
+import { SCHEMA_VERSIONS } from './schema/versions';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 1 as const;
 
 // Colocated with the format it keys, rather than in story.svelte.ts, so
 // this plain (non-rune) module stays importable from a Node context (e.g.
@@ -14,10 +16,14 @@ export const CURRENT_SCHEMA_VERSION = 1;
 // in Svelte-compiler-only syntax.
 export const STORAGE_KEY = 'time-travellers-tracer:story';
 
-export interface StoredDocument {
-  schemaVersion: number;
-  story: Story;
-}
+// Every known schemaVersion, as a tagged union keyed by the `schemaVersion`
+// field — an unrecognized version fails .safeParse() below on its own,
+// with no separate hand-rolled check needed. Grows by one array element
+// each time schema/versions.ts gains a new version (zod's discriminated-
+// union typing wants a real tuple, not something built generically from
+// Object.values(), so this list is kept in sync by hand).
+const storedDocumentSchema = z.discriminatedUnion('schemaVersion', [SCHEMA_VERSIONS[1]]);
+export type StoredDocument = z.infer<typeof storedDocumentSchema>;
 
 // `Event.universe` is mandatory (spec §3) — a story with zero universes has
 // nowhere valid for a first event to point, so a blank/fresh story starts
@@ -34,32 +40,31 @@ export function serializeStory(story: Story): string {
   return JSON.stringify(doc, null, 2);
 }
 
-// Only schemaVersion 1 exists today, so this is an identity passthrough —
-// written as its own step (rather than inlined into parseStoredDocument) so
-// a future schemaVersion bump has an obvious place to add a real migration
-// without restructuring the parse path around it.
+// Walks a parsed document forward one schemaVersion at a time (v1→v2→...)
+// until it reaches CURRENT_SCHEMA_VERSION — each step only has to know how
+// to upgrade its own version to the next, not how to jump from any old
+// version straight to current. Empty today: schemaVersion 1 is the only
+// version, so the loop below never runs. The first real entry
+// (`1: upgradeV1ToV2`) arrives with the next schemaVersion bump.
+const UPGRADES: Record<number, (doc: StoredDocument) => StoredDocument> = {};
+
 function migrate(doc: StoredDocument): Story {
-  if (doc.schemaVersion === 1) return doc.story;
-  throw new Error(`Unsupported story schemaVersion: ${doc.schemaVersion}`);
+  let current = doc;
+  while (current.schemaVersion < CURRENT_SCHEMA_VERSION) {
+    const upgrade = UPGRADES[current.schemaVersion];
+    if (!upgrade) throw new Error(`No upgrade path from schemaVersion ${current.schemaVersion}`);
+    current = upgrade(current);
+  }
+  return current.story;
 }
 
 export function parseStoredDocument(raw: string): Story {
   const parsed: unknown = JSON.parse(raw);
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error('Stored story is not an object');
+  const result = storedDocumentSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`Stored story is invalid: ${z.prettifyError(result.error)}`);
   }
-  const doc = parsed as Partial<StoredDocument>;
-  if (typeof doc.schemaVersion !== 'number') {
-    throw new Error('Stored story is missing schemaVersion');
-  }
-  if (typeof doc.story !== 'object' || doc.story === null) {
-    throw new Error('Stored story is missing its story field');
-  }
-  const { events, observers, universes } = doc.story as Partial<Story>;
-  if (!Array.isArray(events) || !Array.isArray(observers) || !Array.isArray(universes)) {
-    throw new Error('Stored story has malformed events/observers/universes');
-  }
-  return migrate(doc as StoredDocument);
+  return migrate(result.data);
 }
 
 // Multi-story support: a small registry document (separate from any single
