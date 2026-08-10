@@ -20,6 +20,10 @@ playwright/.cache
 # Dev server log (.claude/skills/dev-server/start.sh)
 .dev-server.log
 
+# ts-scratch run dirs are normally self-cleaning (try/finally), this is
+# belt-and-suspenders for an interrupted run (.claude/skills/ts-scratch/)
+.claude/skills/ts-scratch/.tmp/
+
 # Claude Code local runtime state (personal to this machine/session, not
 # shared) — .claude/skills/ itself IS committed, these specific files aren't
 .claude/settings.local.json
