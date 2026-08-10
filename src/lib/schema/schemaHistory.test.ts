@@ -10,6 +10,7 @@ import { hashSchema } from './hash';
 // updating the hash to match a shape change.
 const EXPECTED_HASHES: Record<number, string> = {
   1: '00f9d4297e24a2f0a14691709cd5d2285b3c3e5a07324b0449e0f1d160c77c50',
+  2: '1c55470ae40efa8589cedfd6985b78dd5bfbfe03cecf7f4c39671ad8a2bfd95e',
 };
 
 describe('schema version history is frozen', () => {

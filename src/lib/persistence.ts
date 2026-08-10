@@ -8,7 +8,7 @@ import { generateId } from './id';
 import type { Story } from './types';
 import { SCHEMA_VERSIONS } from './schema/versions';
 
-export const CURRENT_SCHEMA_VERSION = 1 as const;
+export const CURRENT_SCHEMA_VERSION = 2 as const;
 
 // Colocated with the format it keys, rather than in story.svelte.ts, so
 // this plain (non-rune) module stays importable from a Node context (e.g.
@@ -22,17 +22,17 @@ export const STORAGE_KEY = 'time-travellers-tracer:story';
 // each time schema/versions.ts gains a new version (zod's discriminated-
 // union typing wants a real tuple, not something built generically from
 // Object.values(), so this list is kept in sync by hand).
-const storedDocumentSchema = z.discriminatedUnion('schemaVersion', [SCHEMA_VERSIONS[1]]);
+const storedDocumentSchema = z.discriminatedUnion('schemaVersion', [SCHEMA_VERSIONS[1], SCHEMA_VERSIONS[2]]);
 export type StoredDocument = z.infer<typeof storedDocumentSchema>;
 
-// `Event.universe` is mandatory (spec §3) — a story with zero universes has
+// `Event.timeline` is mandatory (spec §3) — a story with zero timelines has
 // nowhere valid for a first event to point, so a blank/fresh story starts
-// with one nameless universe rather than an empty list. UniverseList.svelte
-// refuses to delete the last remaining universe for the same reason, so
-// this invariant ("at least one universe always exists") holds from here
+// with one nameless timeline rather than an empty list. TimelineList.svelte
+// refuses to delete the last remaining timeline for the same reason, so
+// this invariant ("at least one timeline always exists") holds from here
 // on, not just at creation.
 export function emptyStory(): Story {
-  return { events: [], observers: [], universes: [{ id: generateId(), label: undefined }] };
+  return { events: [], observers: [], timelines: [{ id: generateId(), label: undefined }] };
 }
 
 export function serializeStory(story: Story): string {
@@ -40,22 +40,35 @@ export function serializeStory(story: Story): string {
   return JSON.stringify(doc, null, 2);
 }
 
+// v1 used `universe`/`universes` (Event.universe, Story.universes) —
+// renamed to `timeline`/`timelines` in v2, since a disconnected "universe"
+// is really just another timeline in this model. A pure rename, no other
+// shape change, so upgrading it is a mechanical field rename rather than a
+// real data transformation.
+function upgradeV1ToV2(doc: Extract<StoredDocument, { schemaVersion: 1 }>): Extract<StoredDocument, { schemaVersion: 2 }> {
+  return {
+    schemaVersion: 2,
+    story: {
+      events: doc.story.events.map(({ universe, ...rest }) => ({ ...rest, timeline: universe })),
+      observers: doc.story.observers,
+      timelines: doc.story.universes,
+    },
+  };
+}
+
 // Walks a parsed document forward one schemaVersion at a time (v1→v2→...)
 // until it reaches CURRENT_SCHEMA_VERSION — each step only has to know how
 // to upgrade its own version to the next, not how to jump from any old
-// version straight to current. Empty today: schemaVersion 1 is the only
-// version, so the loop below never runs. The first real entry
-// (`1: upgradeV1ToV2`) arrives with the next schemaVersion bump.
-const UPGRADES: Record<number, (doc: StoredDocument) => StoredDocument> = {};
+// version straight to current.
+const UPGRADES: Record<number, (doc: StoredDocument) => StoredDocument> = {
+  1: upgradeV1ToV2 as (doc: StoredDocument) => StoredDocument,
+};
 
 function migrate(doc: StoredDocument): Story {
-  let current = doc;
-  while (current.schemaVersion < CURRENT_SCHEMA_VERSION) {
-    const upgrade = UPGRADES[current.schemaVersion];
-    if (!upgrade) throw new Error(`No upgrade path from schemaVersion ${current.schemaVersion}`);
-    current = upgrade(current);
-  }
-  return current.story;
+  if (doc.schemaVersion === CURRENT_SCHEMA_VERSION) return doc.story;
+  const upgrade = UPGRADES[doc.schemaVersion];
+  if (!upgrade) throw new Error(`No upgrade path from schemaVersion ${doc.schemaVersion}`);
+  return migrate(upgrade(doc));
 }
 
 export function parseStoredDocument(raw: string): Story {

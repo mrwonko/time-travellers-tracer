@@ -18,7 +18,7 @@ import type { Story } from './types';
 // touches no DOM/localStorage, only JSON + object shape.
 
 const sampleStory: Story = {
-  events: [{ id: 'e1', label: 'Signal received', predecessors: [], universe: 'u1' }],
+  events: [{ id: 'e1', label: 'Signal received', predecessors: [], timeline: 'u1' }],
   observers: [
     {
       id: 'o1',
@@ -26,21 +26,21 @@ const sampleStory: Story = {
       sequences: [{ id: 's1', moments: [{ id: 'm1', events: ['e1'], direction: 'forward' }] }],
     },
   ],
-  universes: [{ id: 'u1', label: 'Prime' }],
+  timelines: [{ id: 'u1', label: 'Prime' }],
 };
 
 describe('emptyStory', () => {
-  test('has empty events/observers but one nameless universe', () => {
+  test('has empty events/observers but one nameless timeline', () => {
     const story = emptyStory();
     expect(story.events).toEqual([]);
     expect(story.observers).toEqual([]);
-    expect(story.universes).toHaveLength(1);
-    expect(story.universes[0].label).toBeUndefined();
-    expect(story.universes[0].id).toBeTruthy();
+    expect(story.timelines).toHaveLength(1);
+    expect(story.timelines[0].label).toBeUndefined();
+    expect(story.timelines[0].id).toBeTruthy();
   });
 
-  test('generates a fresh universe id on every call', () => {
-    expect(emptyStory().universes[0].id).not.toBe(emptyStory().universes[0].id);
+  test('generates a fresh timeline id on every call', () => {
+    expect(emptyStory().timelines[0].id).not.toBe(emptyStory().timelines[0].id);
   });
 });
 
@@ -80,13 +80,36 @@ describe('parseStoredDocument error handling', () => {
   });
 
   test('throws when story fields are not arrays', () => {
-    const raw = JSON.stringify({ schemaVersion: 1, story: { events: {}, observers: [], universes: [] } });
+    const raw = JSON.stringify({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      story: { events: {}, observers: [], timelines: [] },
+    });
     expect(() => parseStoredDocument(raw)).toThrow(/expected array/);
   });
 
   test('throws on an unknown/future schemaVersion', () => {
     const raw = JSON.stringify({ schemaVersion: 999, story: sampleStory });
     expect(() => parseStoredDocument(raw)).toThrow(/Invalid discriminator/);
+  });
+});
+
+describe('parseStoredDocument v1 → v2 migration (universe → timeline rename)', () => {
+  const legacyRaw = JSON.stringify({
+    schemaVersion: 1,
+    story: {
+      events: [{ id: 'e1', label: 'Signal received', predecessors: [], universe: 'u1' }],
+      observers: sampleStory.observers,
+      universes: [{ id: 'u1', label: 'Prime' }],
+    },
+  });
+
+  test('renames universe/universes to timeline/timelines', () => {
+    expect(parseStoredDocument(legacyRaw)).toEqual(sampleStory);
+  });
+
+  test('throws when v1 story fields are not arrays', () => {
+    const raw = JSON.stringify({ schemaVersion: 1, story: { events: {}, observers: [], universes: {} } });
+    expect(() => parseStoredDocument(raw)).toThrow(/expected array/);
   });
 });
 
