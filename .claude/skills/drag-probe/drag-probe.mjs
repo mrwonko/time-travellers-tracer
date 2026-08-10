@@ -20,7 +20,9 @@
 // Kept deliberately narrow, same philosophy as screenshot.mjs — this
 // isn't a general Playwright wrapper, just enough to start a drag, hover
 // it somewhere, and look. Extend sparingly.
+import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { seedStory } from '../seed-story/seed-story.mjs';
 
 function splitN(raw, n, usage) {
   const parts = raw.split('::');
@@ -33,6 +35,8 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--url') args.url = argv[++i];
+    else if (a === '--seed') args.seed = argv[++i];
+    else if (a === '--seed-file') args.seedFile = argv[++i];
     else if (a === '--wait-for') args.waitFor = argv[++i];
     else if (a === '--click') args.clicks.push(argv[++i]);
     else if (a === '--source') args.source = argv[++i];
@@ -104,6 +108,13 @@ if (args.help || !args.url || !args.source) {
       "                         only needed if you'll start another drag",
       '                         later in the same script/page (only one',
       '                         native drag can be in flight at a time)',
+      '  --seed <preset>        seed localStorage with a Story before',
+      '                         navigating (see the seed-story skill) —',
+      "                         e.g. 'demo' for the app's small K. Voss/",
+      '                         Handler fixture, instead of the empty',
+      '                         first-run story',
+      '  --seed-file <path>     seed a custom { events, observers,',
+      '                         universes } JSON file instead of a preset',
       '  --width N / --height N viewport size (default 1280x900)',
       '  --wait-for <sel>       wait for a selector before starting the drag',
       '  --click <selector>     (repeatable) click before starting the drag,',
@@ -129,6 +140,9 @@ if (args.help || !args.url || !args.source) {
 
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: args.width, height: args.height } });
+
+if (args.seed) await seedStory(page, args.seed);
+if (args.seedFile) await seedStory(page, JSON.parse(readFileSync(args.seedFile, 'utf8')));
 
 await page.goto(args.url, { waitUntil: 'networkidle' });
 if (args.waitFor) await page.waitForSelector(args.waitFor);

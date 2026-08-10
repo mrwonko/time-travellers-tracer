@@ -12,7 +12,9 @@
 // job was done, rather than accumulating permanently. If you need one of
 // those again, write a one-off script for that specific investigation —
 // don't grow this file back into a general-purpose Playwright wrapper.
+import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { seedStory } from '../seed-story/seed-story.mjs';
 
 function splitPair(raw) {
   const idx = raw.indexOf('::');
@@ -25,6 +27,8 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--url') args.url = argv[++i];
+    else if (a === '--seed') args.seed = argv[++i];
+    else if (a === '--seed-file') args.seedFile = argv[++i];
     else if (a === '--out') args.out = argv[++i];
     else if (a === '--width') args.width = Number(argv[++i]);
     else if (a === '--height') args.height = Number(argv[++i]);
@@ -74,6 +78,13 @@ if (args.help || !args.url || !args.out) {
       'Usage: node screenshot.mjs --url <url> --out <path.png> [options]',
       '',
       'Options:',
+      '  --seed <preset>        seed localStorage with a Story before',
+      '                         navigating (see the seed-story skill) —',
+      "                         e.g. 'demo' for the app's small K. Voss/",
+      '                         Handler fixture, instead of the empty',
+      '                         first-run story',
+      '  --seed-file <path>     seed a custom { events, observers,',
+      '                         universes } JSON file instead of a preset',
       '  --width N              viewport width (default 1280)',
       '  --height N             viewport height (default 900)',
       '  --wait-for <sel>       wait for a selector before doing anything else',
@@ -142,6 +153,9 @@ page.on('requestfailed', (req) => failedRequests.push(req.url()));
 page.on('response', (res) => {
   if (res.status() >= 400) failedRequests.push(`${res.status()} ${res.url()}`);
 });
+
+if (args.seed) await seedStory(page, args.seed);
+if (args.seedFile) await seedStory(page, JSON.parse(readFileSync(args.seedFile, 'utf8')));
 
 await page.goto(args.url, { waitUntil: 'networkidle' });
 if (args.waitFor) {

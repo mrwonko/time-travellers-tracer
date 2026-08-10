@@ -18,6 +18,9 @@ accumulating forever. If you need something not listed here, prefer a
 one-off script for that specific investigation over growing this file.
 
 Options:
+- `--seed <preset>` / `--seed-file <path.json>` — seed localStorage with
+  a Story before navigating (see the `seed-story` skill), instead of the
+  app's empty first-run state — e.g. `--seed demo`
 - `--width N` / `--height N` — viewport size (default 1280x900)
 - `--wait-for <selector>` — wait for a selector (e.g. `text=Events`) right
   after navigation, before any actions run
@@ -73,6 +76,14 @@ node .claude/skills/screenshot/screenshot.mjs \
   --click 'button[aria-label="Add universe"]' \
   --wait-after 'text=Backup' \
   --out /tmp/after-add.png
+```
+
+Example — seed some events/observers instead of starting from the
+app's empty first-run state, then check a panel's contents:
+```
+node .claude/skills/screenshot/screenshot.mjs \
+  --url "http://localhost:8080/#/editor" --seed demo --wait-for "text=Observers" \
+  --out /tmp/seeded.png
 ```
 
 Example — real touch tap on an off-screen element (scroll first, `--tap`

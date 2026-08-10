@@ -31,6 +31,10 @@ you put it.
 
 ## Options
 
+- `--seed <preset>` / `--seed-file <path.json>` — seed localStorage with
+  a Story before navigating (see the `seed-story` skill), instead of the
+  app's empty first-run state — e.g. `--seed demo` for the small K. Voss/
+  Handler fixture used in the example below.
 - `--source <selector>` — the draggable box element itself (what
   `draggable()` was registered on: this app's `[data-drag-box]` element,
   e.g. `.moment-drag-box`, `.sequence-header`, `.event-drag-box`).
@@ -80,7 +84,7 @@ that's hovered:
 
 ```
 node .claude/skills/drag-probe/drag-probe.mjs \
-  --url "http://localhost:8080/#/editor" --wait-for "text=Observers" \
+  --url "http://localhost:8080/#/editor" --seed demo --wait-for "text=Observers" \
   --click 'summary:has-text("K. Voss")' \
   --source '.sequence-block >> nth=0 >> .moment-drag-box >> nth=1' \
   --handle '.sequence-block >> nth=0 >> .moment-drag-box >> nth=1 >> [aria-label="Drag to reorder moment"]' \
