@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { generateId } from './id';
 import type { Story } from './types';
 import { SCHEMA_VERSIONS } from './schema/versions';
+import { upgradeV1ToV2 } from './schema/v2';
 
 export const CURRENT_SCHEMA_VERSION = 2 as const;
 
@@ -18,11 +19,10 @@ export const STORAGE_KEY = 'time-travellers-tracer:story';
 
 // Every known schemaVersion, as a tagged union keyed by the `schemaVersion`
 // field — an unrecognized version fails .safeParse() below on its own,
-// with no separate hand-rolled check needed. Grows by one array element
-// each time schema/versions.ts gains a new version (zod's discriminated-
-// union typing wants a real tuple, not something built generically from
-// Object.values(), so this list is kept in sync by hand).
-const storedDocumentSchema = z.discriminatedUnion('schemaVersion', [SCHEMA_VERSIONS[1], SCHEMA_VERSIONS[2]]);
+// with no separate hand-rolled check needed. SCHEMA_VERSIONS is already
+// stored as the tuple this needs (schema/versions.ts), so a new version
+// only has to be added there, not respelled here too.
+const storedDocumentSchema = z.discriminatedUnion('schemaVersion', SCHEMA_VERSIONS);
 export type StoredDocument = z.infer<typeof storedDocumentSchema>;
 
 // `Event.timeline` is mandatory (spec §3) — a story with zero timelines has
@@ -40,35 +40,22 @@ export function serializeStory(story: Story): string {
   return JSON.stringify(doc, null, 2);
 }
 
-// v1 used `universe`/`universes` (Event.universe, Story.universes) —
-// renamed to `timeline`/`timelines` in v2, since a disconnected "universe"
-// is really just another timeline in this model. A pure rename, no other
-// shape change, so upgrading it is a mechanical field rename rather than a
-// real data transformation.
-function upgradeV1ToV2(doc: Extract<StoredDocument, { schemaVersion: 1 }>): Extract<StoredDocument, { schemaVersion: 2 }> {
-  return {
-    schemaVersion: 2,
-    story: {
-      events: doc.story.events.map(({ universe, ...rest }) => ({ ...rest, timeline: universe })),
-      observers: doc.story.observers,
-      timelines: doc.story.universes,
-    },
-  };
-}
-
 // Walks a parsed document forward one schemaVersion at a time (v1→v2→...)
-// until it reaches CURRENT_SCHEMA_VERSION — each step only has to know how
-// to upgrade its own version to the next, not how to jump from any old
-// version straight to current.
-const UPGRADES: Record<number, (doc: StoredDocument) => StoredDocument> = {
-  1: upgradeV1ToV2 as (doc: StoredDocument) => StoredDocument,
-};
-
+// until it reaches CURRENT_SCHEMA_VERSION, via each version's own named
+// upgrade-to-next function (kept with that version's schema — e.g.
+// upgradeV1ToV2 lives in schema/v2.ts). Narrowing on `doc.schemaVersion`
+// gives each call its exact input/output types for free — no generic
+// upgrade-function lookup table, so no cast needed to make one type-check.
+// A future schemaVersion bump adds one more `if` here, calling that
+// version's own upgradeVNToVN+1 — and until it does, TS itself flags the
+// gap: with every known version handled above, `doc` narrows to `never`
+// below, so a new union member left unhandled is a compile error here,
+// not just a runtime one.
 function migrate(doc: StoredDocument): Story {
   if (doc.schemaVersion === CURRENT_SCHEMA_VERSION) return doc.story;
-  const upgrade = UPGRADES[doc.schemaVersion];
-  if (!upgrade) throw new Error(`No upgrade path from schemaVersion ${doc.schemaVersion}`);
-  return migrate(upgrade(doc));
+  if (doc.schemaVersion === 1) return migrate(upgradeV1ToV2(doc));
+  const unhandled: never = doc;
+  throw new Error(`No upgrade path from schemaVersion ${JSON.stringify(unhandled)}`);
 }
 
 export function parseStoredDocument(raw: string): Story {

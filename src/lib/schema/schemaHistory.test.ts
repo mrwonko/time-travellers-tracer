@@ -14,9 +14,12 @@ const EXPECTED_HASHES: Record<number, string> = {
 };
 
 describe('schema version history is frozen', () => {
-  for (const [version, schema] of Object.entries(SCHEMA_VERSIONS)) {
+  // SCHEMA_VERSIONS is ordered by version — index 0 is schemaVersion 1,
+  // etc. (see its own comment in schema/versions.ts).
+  SCHEMA_VERSIONS.forEach((schema, index) => {
+    const version = index + 1;
     test(`schemaVersion ${version} shape is frozen`, async () => {
-      expect(await hashSchema(schema)).toBe(EXPECTED_HASHES[Number(version)]);
+      expect(await hashSchema(schema)).toBe(EXPECTED_HASHES[version]);
     });
-  }
+  });
 });

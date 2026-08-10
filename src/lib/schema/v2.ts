@@ -8,13 +8,14 @@
 //
 // Renames schemaVersion 1's `universe`/`universes` to `timeline`/
 // `timelines` (a disconnected "universe" is really just another timeline
-// in this model) — see persistence.ts's UPGRADES for the migration and
-// schema/v1.ts for the shape being migrated from.
+// in this model) — see upgradeV1ToV2 below and schema/v1.ts for the shape
+// being migrated from.
 //
 // No `.describe()` calls anywhere below — those become JSON Schema
 // `description` metadata and would fold into the structural hash. Context
 // goes in a plain `//` comment instead.
 import { z } from 'zod';
+import type { storedDocumentV1Schema } from './v1.ts';
 
 export const timelineIdV2Schema = z.string();
 export const eventIdV2Schema = z.string();
@@ -64,3 +65,21 @@ export const storedDocumentV2Schema = z.object({
   schemaVersion: z.literal(2),
   story: storyV2Schema,
 });
+
+// Each version's own upgrade-from-the-previous-version step lives with
+// that version's schema, rather than in persistence.ts, so the two stay
+// next to each other — persistence.ts just dispatches to whichever of
+// these applies (see its migrate()). A pure field rename, no other shape
+// change, so this is a straight remap rather than a real transformation.
+export function upgradeV1ToV2(
+  doc: z.infer<typeof storedDocumentV1Schema>,
+): z.infer<typeof storedDocumentV2Schema> {
+  return {
+    schemaVersion: 2,
+    story: {
+      events: doc.story.events.map(({ universe, ...rest }) => ({ ...rest, timeline: universe })),
+      observers: doc.story.observers,
+      timelines: doc.story.universes,
+    },
+  };
+}
