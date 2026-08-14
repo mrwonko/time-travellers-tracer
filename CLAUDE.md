@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Vite+Svelte+TS scaffold exists, hash-based routing is wired up
 (`svelte-spa-router`, currently just the `/` route), and the landing page
 (`src/routes/Landing.svelte`) establishes the visual design language. The
-actual `Story` authoring UI (events/observers/universes/moments CRUD +
+actual `Story` authoring UI (events/observers/timelines/moments CRUD +
 `localStorage` persistence) is **not built yet** — that's the next slice of
 Phase 1. Don't build graph-rendering code before that.
 
@@ -109,25 +109,25 @@ full before implementing. The core model, summarized:
   should appear twice in participant lists, not be deduplicated.
 - A "background/world timeline" is **not a special concept** — if needed,
   model it as an ordinary `Observer` (spec §6), not a field on `Event`.
-- Every **Event** carries a mandatory `universe: UniverseID` (UUID). Fork
+- Every **Event** carries a mandatory `timeline: TimelineID` (UUID). Fork
   and merge points are *derived* (spec §4), not stored: a fork is an event
-  whose successors span more than one universe, a merge is an event whose
-  predecessors span more than one universe. `universe` is mandatory (not
+  whose successors span more than one timeline, a merge is an event whose
+  predecessors span more than one timeline. `timeline` is mandatory (not
   defaulted) specifically to keep independently-authored `Story` documents
   safely mergeable later — see spec §3, §10.
-- `EventID`/`ObserverID`/`UniverseID`/`MomentID` are all UUIDs, for the same
+- `EventID`/`ObserverID`/`TimelineID`/`MomentID` are all UUIDs, for the same
   reason: the `Story` document is expected to be forked and later
   reconciled between independent edits, and positional array addressing
   doesn't survive that. This "document fork/merge" concept is unrelated to
-  the in-narrative Universe fork/merge above — same word, different layer.
+  the in-narrative Timeline fork/merge above — same word, different layer.
   `participants()` returns `moment.id`, not positional index (spec §4).
-- The persisted/exported unit is a `Story { events, observers, universes }`
+- The persisted/exported unit is a `Story { events, observers, timelines }`
   document (spec §3) — autosaved to `localStorage`, with explicit JSON
   export/import for backup and sharing (spec §10).
 
 Two graphs must not be conflated (spec §5.1): the causal predecessor graph
 ("what caused what," may be cyclic) stays independent of the derived
-branch/universe topology described above — the predecessor graph itself
+branch/timeline topology described above — the predecessor graph itself
 carries no branching-specific structure.
 
 The intended visualization (spec §7, decided direction) is a subway-map
@@ -141,6 +141,6 @@ circular/radial layout, presence matrix, dual synced scrubbers.
 Spec §8 lists remaining open questions (event content model for
 paradox-checking, lane ordering to minimize crossings, connector rendering
 style, default reference observer, inverted-segment visuals, and how the
-chart should visually render universe/fork/merge boundaries). Branching
+chart should visually render timeline/fork/merge boundaries). Branching
 topology and tech stack are resolved (§10 above). Treat the rest as live
 design decisions, not gaps to silently fill in.

@@ -56,7 +56,7 @@ Story {                         // the root document — what gets persisted
                                  // and exported/imported (§10)
   events: Event[]
   observers: Observer[]
-  universes: Universe[]
+  timelines: Timeline[]
 }
 
 Event {
@@ -69,7 +69,7 @@ Event {
                                  // separate from `label` since it's not
                                  // meant to be the short reference name
   predecessors: EventID[]       // "caused by" edges; may form cycles
-  universe: UniverseID          // UUID; mandatory — see below and §10
+  timeline: TimelineID          // UUID; mandatory — see below and §10
 }
 
 Observer {
@@ -96,13 +96,13 @@ Moment {
   direction: "forward" | "inverted"   // see §5.3
 }
 
-Universe {
-  id: UniverseID                 // UUID
+Timeline {
+  id: TimelineID                 // UUID
   label?: string
 }
 ```
 
-`EventID`, `ObserverID`, `UniverseID`, `MomentID`, and `SequenceID` are all
+`EventID`, `ObserverID`, `TimelineID`, `MomentID`, and `SequenceID` are all
 UUIDs. The reason isn't (only) that they're referenced by ID from
 elsewhere — it's that the `Story` document itself (§10) is expected to be
 **forked and later reconciled**: two people (or one person on two
@@ -130,21 +130,21 @@ it doesn't change what can be *represented*, only how comfortably the
 author arrives at it.
 
 *Terminology note*: this "fork a `Story`, reconcile later" concept is
-**unrelated** to the in-narrative Universe fork/merge concept in §4 — same
+**unrelated** to the in-narrative Timeline fork/merge concept in §4 — same
 English word, two different layers (document edit-history vs. story
-content). A single-universe story can still be authored collaboratively and
+content). A single-timeline story can still be authored collaboratively and
 need document-level fork/merge; a single-author story can still have many
-in-narrative universes. Don't conflate them.
+in-narrative timelines. Don't conflate them.
 
-**`universe` is mandatory, not optional/defaultable.** A single-timeline
-story just gives every event the same `UniverseID`. The reason it isn't an
-implicit/omittable default: the UUID + mandatory-universe combination is
+**`timeline` is mandatory, not optional/defaultable.** A single-timeline
+story just gives every event the same `TimelineID`. The reason it isn't an
+implicit/omittable default: the UUID + mandatory-timeline combination is
 what keeps the door open to later importing and merging `Story` documents
 authored independently by different people (§10) — an *implicit* shared
-default universe would silently glue two separately-authored untagged
-event sets into one universe on merge, fabricating meetings/merge-points
-that were never intended. Requiring an explicit `UniverseID` (itself a UUID,
-so two authors' universes can never accidentally collide either) avoids that
+default timeline would silently glue two separately-authored untagged
+event sets into one timeline on merge, fabricating meetings/merge-points
+that were never intended. Requiring an explicit `TimelineID` (itself a UUID,
+so two authors' timelines can never accidentally collide either) avoids that
 trap even though it's some upfront busywork for the common non-branching
 case.
 
@@ -202,16 +202,16 @@ includes more than one distinct observer (or the same observer more than
 once, for a self-encounter).
 
 **Fork/merge points** — like `participants()`, derived by cross-referencing
-`predecessors` against `universe`, not stored as their own graph (§5.1,
+`predecessors` against `timeline`, not stored as their own graph (§5.1,
 §10):
 
 - A **fork point** is an event `E` whose direct successors (events listing
-  `E` in their `predecessors`) span more than one distinct `universe`.
+  `E` in their `predecessors`) span more than one distinct `timeline`.
 - A **merge point** is an event `E` whose own `predecessors` span more than
-  one distinct `universe`.
+  one distinct `timeline`.
 
 There's no structural distinction between a "full merge" and a partial
-causal bleed between timelines — both are just an edge crossing universes;
+causal bleed between timelines — both are just an edge crossing timelines;
 it's a narrative reading of the same fact, not a data-level one.
 
 ## 5. Causality, cycles, and self-consistency
@@ -222,8 +222,8 @@ it's a narrative reading of the same fact, not a data-level one.
   paradox/satisfiability checking (§5.2) and for validating observer
   traversal order (§5.3).
 - **Branching/merging timeline topology** — resolved (§3, §4): every `Event`
-  carries a mandatory `universe` tag, and fork/merge points are *derived* by
-  finding where the predecessor graph's edges cross `universe` boundaries.
+  carries a mandatory `timeline` tag, and fork/merge points are *derived* by
+  finding where the predecessor graph's edges cross `timeline` boundaries.
   The predecessor graph itself is unchanged by this — it still means only
   "what caused what" — so the two concerns stay independent as required
   here, without needing a second stored graph.
@@ -326,10 +326,10 @@ exploration, not the primary direction):
 ## 8. Open questions (intentionally left open)
 
 1. ~~**Branching/merging timeline topology.**~~ **RESOLVED** — see §3, §4,
-   §5.1: mandatory `universe: UniverseID` on `Event`; fork/merge points are
+   §5.1: mandatory `timeline: TimelineID` on `Event`; fork/merge points are
    derived, not a separate stored graph. Still open, and deferred to the
-   viz-design pass: how the chart should *render* universe boundaries
-   (separate lane groups? color per universe? something else?) — see new
+   viz-design pass: how the chart should *render* timeline boundaries
+   (separate lane groups? color per timeline? something else?) — see new
    item 8 below.
 2. **Event content model.** What does "content" of an event actually consist
    of, and how are per-edge constraints on content represented and
@@ -345,9 +345,9 @@ exploration, not the primary direction):
 6. **Inverted-segment rendering details.** Exact visual treatment for
    direction flips and for forward/inverted meetings.
 7. ~~**Tech stack.**~~ **RESOLVED** — see §10.
-8. **Universe rendering.** *(new)* How should the subway-map chart visually
-   indicate universe boundaries and fork/merge points, now that they're
-   defined (§4)? E.g. color-per-universe, separate lane groupings, explicit
+8. **Timeline rendering.** *(new)* How should the subway-map chart visually
+   indicate timeline boundaries and fork/merge points, now that they're
+   defined (§4)? E.g. color-per-timeline, separate lane groupings, explicit
    fork/merge glyphs at those events. Not yet decided.
 9. **Rendering an observer with unmerged sequences.** *(new)* §7's lane
    layout (Y-position for the reference observer, in-lane arrows for every
@@ -377,7 +377,7 @@ exploration, not the primary direction):
 - Real-time collaborative editing, server-side/backend persistence, and
   live multi-author merging are out of scope for this pass. Local browser
   persistence and file-based import/export *are* in scope — see §10; the
-  mandatory-UUID/mandatory-universe design keeps the door open for a future
+  mandatory-UUID/mandatory-timeline design keeps the door open for a future
   multi-author merge feature, but the merge logic/UI itself is not being
   built now.
 
@@ -396,7 +396,7 @@ server is required even though there's no real backend.
 - **Svelte + TypeScript**, built with **Vite**. Chosen over React for a
   smaller dependency footprint and no virtual-DOM runtime; Svelte compiles
   away at build time. Chosen over no framework at all because the app needs
-  nontrivial UI state (observer/universe selection, scrubbing) that's
+  nontrivial UI state (observer/timeline selection, scrubbing) that's
   tedious to hand-roll.
 - **SVG**, not Canvas, for the chart itself — each element is a real DOM
   node, so hover/click/CSS-transition interactivity is native and doesn't
@@ -423,7 +423,7 @@ which was the motivating requirement (§9, §11).
 **Persistence & data portability**: the `Story` document (§3) is
 autosaved to `localStorage` as it's edited, plus explicit **JSON
 export/import** for backup and sharing between people. This is the reason
-`EventID`/`ObserverID`/`UniverseID` are UUIDs and `Event.universe` is
+`EventID`/`ObserverID`/`TimelineID` are UUIDs and `Event.timeline` is
 mandatory rather than an implicit default (§3) — it keeps two independently
 authored `Story` documents safely combinable later (a real merge
 feature/UI is *not* being built now — see §9 — but the identifiers won't
@@ -432,10 +432,10 @@ need to change when it is).
 ## 11. MVP phasing
 
 **Phase 1 (current target): the story editor, no chart.** Author and edit a
-full `Story` (events with predecessors/universe, observers, moments
+full `Story` (events with predecessors/timeline, observers, moments
 including `direction`) through a UI, with persistence (§10). The subway-map
 visualization (§7) and everything downstream of it (lane layout, connector
-rendering, universe-rendering open question §8 item 8) is explicitly **not**
+rendering, timeline-rendering open question §8 item 8) is explicitly **not**
 part of this phase — it's the next one, once the editor exists.
 
 **Visual design language** for the editor (and, later, the graph) is

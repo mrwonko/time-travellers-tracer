@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
 import EventList from './EventList.svelte';
-import type { StoryEvent, StoryUniverse } from '../types';
+import type { StoryEvent, StoryTimeline } from '../types';
 
 // Editing used to be list-scoped (one shared `editingId`), so starting a
 // second edit silently discarded the first row's in-progress draft. Edit
@@ -12,12 +12,12 @@ import type { StoryEvent, StoryUniverse } from '../types';
 
 describe('EventList — row-scoped independent editing', () => {
   test('two rows can be edited simultaneously without losing either draft', async () => {
-    const universes: StoryUniverse[] = [{ id: 'u1', label: 'Prime' }];
+    const timelines: StoryTimeline[] = [{ id: 'u1', label: 'Prime' }];
     const events: StoryEvent[] = [
-      { id: 'e1', label: 'Signal received at the depot', predecessors: [], universe: 'u1' },
-      { id: 'e2', label: 'Handoff at the overpass', predecessors: ['e1'], universe: 'u1' },
+      { id: 'e1', label: 'Signal received at the depot', predecessors: [], timeline: 'u1' },
+      { id: 'e2', label: 'Handoff at the overpass', predecessors: ['e1'], timeline: 'u1' },
     ];
-    const { container } = await render(EventList, { props: { events, universes } });
+    const { container } = await render(EventList, { props: { events, timelines } });
 
     const rows = container.querySelectorAll('tbody tr');
     await userEvent.click(rows[0].querySelector('button[aria-label="Edit event"]')!);

@@ -37,11 +37,11 @@ export const PRESETS = {
   // they meet at the handoff — plus a second unmerged sequence and a
   // multi-event moment, to exercise merge-splice and multi-event display.
   demo: {
-    universes: [{ id: primeId, label: 'Prime' }],
+    timelines: [{ id: primeId, label: 'Prime' }],
     events: [
-      { id: e1, label: 'Signal received at the depot', predecessors: [], universe: primeId },
-      { id: e2, label: 'Handoff at the overpass', predecessors: [e1], universe: primeId },
-      { id: e3, label: 'Depot burns', predecessors: [e2], universe: primeId },
+      { id: e1, label: 'Signal received at the depot', predecessors: [], timeline: primeId },
+      { id: e2, label: 'Handoff at the overpass', predecessors: [e1], timeline: primeId },
+      { id: e3, label: 'Depot burns', predecessors: [e2], timeline: primeId },
     ],
     observers: [
       {
@@ -86,7 +86,9 @@ export async function seedStory(page, storyOrPreset) {
   if (!story) {
     throw new Error(`seedStory: unknown preset "${storyOrPreset}" (known presets: ${Object.keys(PRESETS).join(', ')})`);
   }
-  const raw = JSON.stringify({ schemaVersion: 1, story }, null, 2);
+  // 2 must track persistence.ts's CURRENT_SCHEMA_VERSION — hand-duplicated
+  // rather than imported, same reason as STORAGE_KEY above.
+  const raw = JSON.stringify({ schemaVersion: 2, story }, null, 2);
   await page.addInitScript(
     // This callback is stringified and injected into the *browser* page
     // by addInitScript, not run in this file's own Node context — window

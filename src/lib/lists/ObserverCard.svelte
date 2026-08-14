@@ -1,7 +1,7 @@
 <script lang="ts">
   // TODO: this row-per-entity edit pattern (own local `editing`/draft
   // state, Save/Cancel via callback props) repeats near-identically
-  // across EventRow, UniverseRow, and here/MomentBox. Svelte 5 supports
+  // across EventRow, TimelineRow, and here/MomentBox. Svelte 5 supports
   // a generic "editable list" component for this (a script block with a
   // generics="T" attribute, plus snippet props for per-column render
   // logic), but that's a real shared-shape design decision, not

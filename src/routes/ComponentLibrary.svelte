@@ -48,7 +48,7 @@
 
     <ChamferBox tag="section" class="complib-swatch">
       <h2>IconButton</h2>
-      <p class="note">Accessible name via <code>aria-label</code> (not <code>alt</code> — that's <code>&lt;img&gt;</code>-only). Solid amber by default — every editor action button uses this, no separate "primary" color needed. Delete is distinguished from Edit only by the "x" glyph and its label — no danger/red color, since the palette reserves wider hues for future per-universe graph coloring. "ghost" stays available for lower-emphasis cases, not currently used in the editor itself.</p>
+      <p class="note">Accessible name via <code>aria-label</code> (not <code>alt</code> — that's <code>&lt;img&gt;</code>-only). Solid amber by default — every editor action button uses this, no separate "primary" color needed. Delete is distinguished from Edit only by the "x" glyph and its label — no danger/red color, since the palette reserves wider hues for future per-timeline graph coloring. "ghost" stays available for lower-emphasis cases, not currently used in the editor itself.</p>
       <div class="button-row">
         <IconButton icon="plus" label="Add" onclick={() => {}} />
         <IconButton icon="edit" label="Edit" onclick={() => {}} />

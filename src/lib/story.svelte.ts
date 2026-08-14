@@ -109,7 +109,7 @@ export const saveCount = $state({ value: 0 });
 export function replaceStory(next: Story): void {
   story.events = next.events;
   story.observers = next.observers;
-  story.universes = next.universes;
+  story.timelines = next.timelines;
 }
 
 function persistRegistry(): void {
@@ -160,19 +160,19 @@ export interface DeletedStory {
   raw: string | null;
 }
 
-// Refuses to delete the last remaining story (mirrors UniverseList's
-// last-universe guard) — the UI is expected to disable the control before
+// Refuses to delete the last remaining story (mirrors TimelineList's
+// last-timeline guard) — the UI is expected to disable the control before
 // this is ever reached, this is the defensive backstop at the actual
-// mutation point (same two-layer pattern as EventList's universe check).
+// mutation point (same two-layer pattern as EventList's timeline check).
 // If `id` is the active story, the caller (StoryPicker) is responsible for
 // navigating to a different one first — not this function's concern.
 //
 // Whole-story deletion is real data loss, same category as an
-// Event/Observer/Universe delete — those get an undo toast rather than a
+// Event/Observer/Timeline delete — those get an undo toast rather than a
 // confirm() dialog, so this returns everything needed to reconstruct the
 // deleted story (see restoreDeletedStory below) instead of doing that
 // itself, since the undo toast is owned by the calling UI (StoryPicker),
-// same split as UniverseList's own pushUndo call.
+// same split as TimelineList's own pushUndo call.
 export function deleteStory(id: string): DeletedStory | undefined {
   if (registry.length <= 1) {
     pushToast('At least one story must remain.');

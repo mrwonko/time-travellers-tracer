@@ -4,24 +4,24 @@
   import MultiSelectCombobox from '../MultiSelectCombobox.svelte';
   import EventRow from './EventRow.svelte';
   import { pushUndo } from '../toastQueue.svelte';
-  import type { StoryEvent, StoryUniverse } from '../types';
+  import type { StoryEvent, StoryTimeline } from '../types';
 
-  let { events = $bindable(), universes }: { events: StoryEvent[]; universes: StoryUniverse[] } = $props();
+  let { events = $bindable(), timelines }: { events: StoryEvent[]; timelines: StoryTimeline[] } = $props();
 
   let newLabel = $state('');
   let newDescription = $state('');
   // Deliberately only a one-time default for the add-row's dropdown — it
-  // doesn't need to track later changes to `universes[0]`.
+  // doesn't need to track later changes to `timelines[0]`.
   // svelte-ignore state_referenced_locally
-  let newUniverse = $state(universes[0]?.id ?? '');
+  let newTimeline = $state(timelines[0]?.id ?? '');
   let newPredecessors = $state<string[]>([]);
   function add() {
-    // universe is mandatory on every Event (spec §3) — newUniverse is only
-    // ever empty if `universes` itself is empty, which UniverseList.svelte
+    // timeline is mandatory on every Event (spec §3) — newTimeline is only
+    // ever empty if `timelines` itself is empty, which TimelineList.svelte
     // now refuses to allow (it always keeps at least one), but this stays
     // as the actual enforcement point rather than trusting that invariant
     // silently.
-    if (!newLabel.trim() || !newUniverse) return;
+    if (!newLabel.trim() || !newTimeline) return;
     events = [
       ...events,
       {
@@ -29,7 +29,7 @@
         label: newLabel.trim(),
         description: newDescription.trim() || undefined,
         predecessors: newPredecessors,
-        universe: newUniverse,
+        timeline: newTimeline,
       },
     ];
     newLabel = '';
@@ -37,7 +37,7 @@
     newPredecessors = [];
   }
 
-  function saveEvent(id: string, patch: { label: string; description: string | undefined; universe: string; predecessors: string[] }) {
+  function saveEvent(id: string, patch: { label: string; description: string | undefined; timeline: string; predecessors: string[] }) {
     events = events.map((ev) => (ev.id === id ? { ...ev, ...patch } : ev));
   }
 
@@ -66,7 +66,7 @@
     <tr>
       <th>Label</th>
       <th>Description</th>
-      <th>Universe</th>
+      <th>Timeline</th>
       <th>Predecessors</th>
       <th>Actions</th>
     </tr>
@@ -76,7 +76,7 @@
       <EventRow
         event={ev}
         {events}
-        {universes}
+        {timelines}
         onSave={(patch) => saveEvent(ev.id, patch)}
         onDelete={() => removeEvent(ev.id)}
       />
@@ -101,8 +101,8 @@
         />
       </td>
       <td>
-        <select class="field" bind:value={newUniverse}>
-          {#each universes as u (u.id)}
+        <select class="field" bind:value={newTimeline}>
+          {#each timelines as u (u.id)}
             <option value={u.id}>{u.label}</option>
           {/each}
         </select>
@@ -115,7 +115,7 @@
         />
       </td>
       <td class="actions">
-        <IconButton icon="plus" label="Add event" variant="accent" onclick={add} disabled={!newLabel.trim() || !newUniverse} />
+        <IconButton icon="plus" label="Add event" variant="accent" onclick={add} disabled={!newLabel.trim() || !newTimeline} />
       </td>
     </tr>
   </tbody>

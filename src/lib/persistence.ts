@@ -7,8 +7,9 @@ import { z } from 'zod';
 import { generateId } from './id';
 import type { Story } from './types';
 import { SCHEMA_VERSIONS } from './schema/versions';
+import { upgradeV1ToV2 } from './schema/v2';
 
-export const CURRENT_SCHEMA_VERSION = 1 as const;
+export const CURRENT_SCHEMA_VERSION = 2 as const;
 
 // Colocated with the format it keys, rather than in story.svelte.ts, so
 // this plain (non-rune) module stays importable from a Node context (e.g.
@@ -18,21 +19,20 @@ export const STORAGE_KEY = 'time-travellers-tracer:story';
 
 // Every known schemaVersion, as a tagged union keyed by the `schemaVersion`
 // field — an unrecognized version fails .safeParse() below on its own,
-// with no separate hand-rolled check needed. Grows by one array element
-// each time schema/versions.ts gains a new version (zod's discriminated-
-// union typing wants a real tuple, not something built generically from
-// Object.values(), so this list is kept in sync by hand).
-const storedDocumentSchema = z.discriminatedUnion('schemaVersion', [SCHEMA_VERSIONS[1]]);
+// with no separate hand-rolled check needed. SCHEMA_VERSIONS is already
+// stored as the tuple this needs (schema/versions.ts), so a new version
+// only has to be added there, not respelled here too.
+const storedDocumentSchema = z.discriminatedUnion('schemaVersion', SCHEMA_VERSIONS);
 export type StoredDocument = z.infer<typeof storedDocumentSchema>;
 
-// `Event.universe` is mandatory (spec §3) — a story with zero universes has
+// `Event.timeline` is mandatory (spec §3) — a story with zero timelines has
 // nowhere valid for a first event to point, so a blank/fresh story starts
-// with one nameless universe rather than an empty list. UniverseList.svelte
-// refuses to delete the last remaining universe for the same reason, so
-// this invariant ("at least one universe always exists") holds from here
+// with one nameless timeline rather than an empty list. TimelineList.svelte
+// refuses to delete the last remaining timeline for the same reason, so
+// this invariant ("at least one timeline always exists") holds from here
 // on, not just at creation.
 export function emptyStory(): Story {
-  return { events: [], observers: [], universes: [{ id: generateId(), label: undefined }] };
+  return { events: [], observers: [], timelines: [{ id: generateId(), label: undefined }] };
 }
 
 export function serializeStory(story: Story): string {
@@ -41,21 +41,24 @@ export function serializeStory(story: Story): string {
 }
 
 // Walks a parsed document forward one schemaVersion at a time (v1→v2→...)
-// until it reaches CURRENT_SCHEMA_VERSION — each step only has to know how
-// to upgrade its own version to the next, not how to jump from any old
-// version straight to current. Empty today: schemaVersion 1 is the only
-// version, so the loop below never runs. The first real entry
-// (`1: upgradeV1ToV2`) arrives with the next schemaVersion bump.
-const UPGRADES: Record<number, (doc: StoredDocument) => StoredDocument> = {};
-
+// until it reaches CURRENT_SCHEMA_VERSION, via each version's own named
+// upgrade-to-next function (kept with that version's schema — e.g.
+// upgradeV1ToV2 lives in schema/v2.ts).
+//
+// This is deliberately an explicit `if` per version, not a generic lookup
+// over an array/map of upgrade functions: narrowing `doc` via the literal
+// `schemaVersion` check is the only way TypeScript can prove each call is
+// safe, so every alternative that tried to make this fully data-driven
+// either failed to compile honestly, or silently degraded to `any` and
+// stopped checking anything at all (both explored and rejected — see PR
+// discussion). One `if` per version is the real cost of that guarantee;
+// with every version handled, `doc` narrows to `never` below, so a future
+// version left unhandled is a compile error here, not just a runtime one.
 function migrate(doc: StoredDocument): Story {
-  let current = doc;
-  while (current.schemaVersion < CURRENT_SCHEMA_VERSION) {
-    const upgrade = UPGRADES[current.schemaVersion];
-    if (!upgrade) throw new Error(`No upgrade path from schemaVersion ${current.schemaVersion}`);
-    current = upgrade(current);
-  }
-  return current.story;
+  if (doc.schemaVersion === CURRENT_SCHEMA_VERSION) return doc.story;
+  if (doc.schemaVersion === 1) return migrate(upgradeV1ToV2(doc));
+  const unhandled: never = doc;
+  throw new Error(`No upgrade path from schemaVersion ${JSON.stringify(unhandled)}`);
 }
 
 export function parseStoredDocument(raw: string): Story {
