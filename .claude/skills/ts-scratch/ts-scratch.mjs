@@ -5,11 +5,17 @@
 // /tmp and running tsc by hand each time a type-system question needs
 // answering. The scratch dir lives in system /tmp (not inside the repo,
 // which may not be writable, e.g. a read-only checkout) and persists across
-// runs, so a snippet can be edited in place and rechecked without re-piping
-// the whole thing every time. tsc resolves bare specifiers like `zod` by
-// walking up from the source file looking for node_modules; a symlink to
-// this repo's real node_modules is placed directly inside the scratch dir
-// so that walk finds it immediately, without the scratch dir needing to be
+// runs. Bootstrapping the dir and running the actual check are decoupled so
+// the Bash invocation is always the same fixed, argument-less command
+// (approvable once instead of every time): write the snippet straight to
+// the persisted path with the Write/Edit tool, then rerun this script with
+// no arguments. Piping a snippet via stdin/--file still works but makes
+// the shell command's text different on every call, which defeats
+// allow-listing it — prefer the Write-tool flow for anything beyond a
+// single quick check. tsc resolves bare specifiers like `zod` by walking
+// up from the source file looking for node_modules; a symlink to this
+// repo's real node_modules is placed directly inside the scratch dir so
+// that walk finds it immediately, without the scratch dir needing to be
 // inside the repo tree.
 
 import { fileURLToPath } from 'node:url';
@@ -31,9 +37,10 @@ function usage() {
     '(strict, noEmit, types: []) with access to this repo\'s real',
     'node_modules (e.g. zod resolves normally).',
     '',
-    `The snippet persists at ${SNIPPET_PATH} between runs — edit it`,
-    'directly and rerun with no arguments to recheck, instead of',
-    're-piping the whole snippet every time.',
+    `Preferred flow: write the snippet to ${SNIPPET_PATH} with the`,
+    'Write/Edit tool, then run this script with no arguments — that keeps',
+    'the Bash command identical every time, so it can be approved once.',
+    'Edit the same file and rerun to iterate.',
     '',
     'Options:',
     '  --file <path>   read the snippet from this file instead of stdin',
@@ -42,10 +49,6 @@ function usage() {
     '',
     'No JSON wrapper: prints tsc\'s own diagnostic output as-is, and exits',
     'with tsc\'s own exit code (0 = no type errors).',
-    '',
-    'Example:',
-    "  echo \"import { z } from 'zod'; const s = z.string();\" \\",
-    '    | .claude/skills/ts-scratch/ts-scratch.mjs',
   ].join('\n');
 }
 
@@ -81,16 +84,13 @@ if (args.clean) {
   process.exit(0);
 }
 
-const snippet = args.file ? fs.readFileSync(args.file, 'utf8') : readStdin();
-
-if (!snippet.trim() && !fs.existsSync(SNIPPET_PATH)) {
-  console.error(usage());
-  process.exit(1);
-}
-
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(scriptDir, '..', '..', '..');
 
+// Bootstrapping (dir + node_modules symlink) always happens, independent of
+// whether this call also supplies a snippet, so a plain no-args run is a
+// valid — and idempotent — first call that just gets the scratch dir ready
+// for the Write tool to target.
 fs.mkdirSync(SCRATCH_DIR, { recursive: true });
 
 // Relinked every run (cheap) so a stale/missing link never lingers.
@@ -98,8 +98,14 @@ const nodeModulesLink = path.join(SCRATCH_DIR, 'node_modules');
 fs.rmSync(nodeModulesLink, { recursive: true, force: true });
 fs.symlinkSync(path.join(repoRoot, 'node_modules'), nodeModulesLink, 'dir');
 
+const snippet = args.file ? fs.readFileSync(args.file, 'utf8') : readStdin();
 if (snippet.trim()) {
   fs.writeFileSync(SNIPPET_PATH, snippet);
+}
+
+if (!fs.existsSync(SNIPPET_PATH)) {
+  console.log(`Scratch dir ready. Write your snippet to ${SNIPPET_PATH}, then rerun with no arguments.`);
+  process.exit(1);
 }
 
 fs.writeFileSync(
