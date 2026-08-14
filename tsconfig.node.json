@@ -26,5 +26,9 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", ".claude/skills/seed-story/seed-story.mjs"]
+  "include": [
+    "vite.config.ts",
+    ".claude/skills/seed-story/seed-story.mjs",
+    ".claude/skills/ts-scratch/ts-scratch.mjs"
+  ]
 }
