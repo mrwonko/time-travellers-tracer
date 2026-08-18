@@ -45,6 +45,7 @@ query($owner: String!, $name: String!, $number: Int!) {
           line
           originalLine
           comments(first: 100) {
+            pageInfo { hasNextPage }
             nodes {
               databaseId
               body
@@ -80,6 +81,12 @@ cmd_list() {
   has_next=$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<< "$data")
   if [[ "$has_next" == "true" ]]; then
     echo "warning: 100+ review threads exist; some may be omitted (pagination not implemented)" >&2
+  fi
+
+  local comments_has_next
+  comments_has_next=$(jq -r '[.data.repository.pullRequest.reviewThreads.nodes[].comments.pageInfo.hasNextPage] | any' <<< "$data")
+  if [[ "$comments_has_next" == "true" ]]; then
+    echo "warning: at least one thread has 100+ comments; some may be omitted (pagination not implemented)" >&2
   fi
 
   jq -r --argjson showAll "$show_all" '
